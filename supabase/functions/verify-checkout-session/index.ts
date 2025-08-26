@@ -1,8 +1,8 @@
 // supabase/functions/verify-checkout-session/index.ts
 
-// ★修正: 互換性の問題を解決するため、完全なURLでライブラリを直接インポートします
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@15.12.0?target=deno";
+// ★修正: import_map.json を使うように、インポートの書き方を変更
+import { serve } from "std/http/server.ts";
+import Stripe from "stripe";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
