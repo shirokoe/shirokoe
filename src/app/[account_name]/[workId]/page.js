@@ -76,7 +76,7 @@ export default function PublicWorkPage() {
           
           // 2. 決済が本物か、ロボットに確認してもらう
           const { data, error: invokeError } = await supabase.functions.invoke(
-            "verify-and-get-download-url", // ★修正: 新しいロボットを呼び出す
+            "verify-and-get-download-url",
             { body: { session_id: sessionId } }
           );
           if (invokeError) throw invokeError;
@@ -174,6 +174,25 @@ export default function PublicWorkPage() {
     }
   };
 
+  const handleDownload = async () => {
+    setIsAudioLoading(true); // スピナー表示のため
+    const { data: audioUrlData } = supabase.storage.from('voice_datas').getPublicUrl(work.voice_data_path);
+    try {
+        const response = await fetch(audioUrlData.publicUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none'; a.href = url; a.download = `${work.title}.webm`;
+        document.body.appendChild(a); a.click();
+        window.URL.revokeObjectURL(url); a.remove();
+    } catch (err) {
+        console.error("ダウンロードエラー:", err);
+        setError("ダウンロードに失敗しました。");
+    } finally {
+        setIsAudioLoading(false);
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen bg-neutral-100 flex items-center justify-center"><FaSpinner className="animate-spin text-4xl text-lime-500" /></div>;
   }
@@ -212,10 +231,9 @@ export default function PublicWorkPage() {
               <div className="flex items-center gap-2"><FaUsers /><span className="font-semibold">{work.sales_count} 人が購入済み</span></div>
             </div>
             {isPurchased ? (
-                <div className="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 bg-lime-100 text-lime-800">
-                    <FaCheckCircle />
-                    <span>購入済みです</span>
-                </div>
+                <button onClick={handleDownload} className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 bg-neutral-800 text-white`} disabled={isAudioLoading}>
+                    {isAudioLoading ? <><FaSpinner className="animate-spin" /><span>準備中...</span></> : <><FaDownload /><span>再度ダウンロード</span></>}
+                </button>
             ) : (
               <button onClick={handlePurchase} className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 ${isProcessingPurchase ? 'bg-lime-600 cursor-not-allowed' : 'bg-lime-500'}`} disabled={isProcessingPurchase}>
                 {isProcessingPurchase ? <><FaSpinner className="animate-spin" /><span>処理中...</span></> : <><FaShoppingCart /><span>¥{work.price} で購入する</span></>}

@@ -54,12 +54,12 @@ function LoadingScreen() {
 // =====================================================================
 // 録音UIコンポーネント (UI表示に特化)
 // =====================================================================
-function RecordingUI({ countdown, stream, onCancel }) {
+function RecordingUI({ status, countdown, stream, onCancel }) {
     const canvasRef = useRef(null);
     const animationFrameRef = useRef(null);
 
     useEffect(() => {
-        if (!stream || !canvasRef.current) return;
+        if (status !== 'recording' || !stream || !canvasRef.current) return;
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const analyser = audioContext.createAnalyser();
         const source = audioContext.createMediaStreamSource(stream);
@@ -93,19 +93,28 @@ function RecordingUI({ countdown, stream, onCancel }) {
             cancelAnimationFrame(animationFrameRef.current);
             audioContext.close();
         };
-    }, [stream]);
+    }, [status, stream]);
 
     return (
         <div className="fixed inset-0 bg-neutral-900 text-white flex flex-col items-center justify-center p-6 z-50">
             <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full opacity-50"></canvas>
             <div className="relative z-10 flex flex-col items-center text-center">
-                <div className="font-mono text-8xl font-black text-lime-500 mb-8 tabular-nums">
-                    00:{String(countdown).padStart(2, '0')}
-                </div>
-                <button onClick={onCancel} className="group flex items-center gap-3 px-8 py-4 bg-transparent border-2 border-red-600 text-red-600 rounded-full font-bold text-lg transition-all duration-300 hover:bg-red-600 hover:text-white transform hover:scale-110">
-                    <FaStop className="transition-transform duration-300 group-hover:rotate-90" />
-                    録音を中断
-                </button>
+                {status === 'preparing' ? (
+                    <>
+                        <p className="text-3xl text-neutral-300 mb-8 animate-pulse">静かに、深く、あなたの声を。</p>
+                        <div className="font-mono text-8xl font-black text-white">{countdown}</div>
+                    </>
+                ) : (
+                    <>
+                        <div className="font-mono text-8xl font-black text-lime-500 mb-8 tabular-nums">
+                            00:{String(countdown).padStart(2, '0')}
+                        </div>
+                        <button onClick={onCancel} className="group flex items-center gap-3 px-8 py-4 bg-transparent border-2 border-red-600 text-red-600 rounded-full font-bold text-lg transition-all duration-300 hover:bg-red-600 hover:text-white transform hover:scale-110">
+                            <FaStop className="transition-transform duration-300 group-hover:rotate-90" />
+                            録音を中断
+                        </button>
+                    </>
+                )}
             </div>
         </div>
     );
@@ -147,11 +156,14 @@ export default function CreatorPage() {
   const fetchWorks = async (userId) => {
     if (!userId) return;
     const { data, error } = await supabase.from('works').select('*').eq('user_id', userId).order('created_at', { ascending: false });
-    if (error) { console.error("作品の取得に失敗しました:", error); } else { setWorks(data); }
+    if (error) { 
+        console.error("作品の取得に失敗しました:", error); 
+    } else { 
+        setWorks(data);
+    }
   };
 
-  useEffect(() => {
-    const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
       const { data: auth } = await supabase.auth.getUser();
       const currentUser = auth?.user ?? null;
       if (!currentUser) { router.replace("/login"); return; }
@@ -161,29 +173,34 @@ export default function CreatorPage() {
       setShop(shopData);
       await fetchWorks(currentUser.id);
       setLoading(false);
-    };
-    fetchProfile();
   }, [router]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
   
   useEffect(() => {
-    if (recordingStatus !== 'recording') return;
-
+    if (recordingStatus === 'idle') return;
     const timer = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          if (mediaRecorderRef.current?.state === 'recording') {
-            mediaRecorderRef.current.stop();
+          if (recordingStatus === 'preparing') {
+            setRecordingStatus('recording');
+            setCountdown(30);
+            mediaRecorderRef.current?.start();
+          } else if (recordingStatus === 'recording') {
+            if (mediaRecorderRef.current?.state === 'recording') {
+              mediaRecorderRef.current.stop();
+            }
           }
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(timer);
   }, [recordingStatus]);
-
 
   const resetPublishForm = () => {
     setNewAudioBlob(null);
@@ -232,9 +249,8 @@ export default function CreatorPage() {
         setStream(null);
       };
 
-      setRecordingStatus('recording');
-      setCountdown(30);
-      mediaRecorderRef.current.start();
+      setRecordingStatus('preparing');
+      setCountdown(3);
       
     } catch (err) {
       console.error("マイクへのアクセスが拒否されました。", err);
@@ -283,7 +299,7 @@ export default function CreatorPage() {
       });
       if (insertError) throw insertError;
       
-      await fetchWorks(user.id);
+      await fetchProfile();
       setPublishing(false);
       resetPublishForm();
     } catch (error) {
@@ -322,7 +338,7 @@ export default function CreatorPage() {
   };
 
   if (loading) return <LoadingScreen />;
-  if (recordingStatus === 'recording') return <RecordingUI status={recordingStatus} countdown={countdown} stream={stream} onCancel={cancelRecording} />;
+  if (recordingStatus !== 'idle') return <RecordingUI status={recordingStatus} countdown={countdown} stream={stream} onCancel={cancelRecording} />;
 
   if (newAudioBlob) {
     return (
@@ -459,13 +475,14 @@ export default function CreatorPage() {
           <div className="lg:col-span-1 bg-white p-8 rounded-3xl shadow-md h-fit">
               <h2 className="text-2xl font-bold mb-4">アナリティクス</h2>
               <div className="space-y-4 text-lg">
+                {/* ★修正: 実際のデータを表示 */}
                 <div className="flex justify-between items-center bg-lime-50 p-4 rounded-lg">
                   <span className="font-semibold text-lime-800">総売上</span>
-                  <span className="font-black text-2xl text-lime-600">¥...</span>
+                  <span className="font-black text-2xl text-lime-600">¥{(shop?.total_sales_count * 400).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center bg-neutral-100 p-4 rounded-lg">
                   <span className="font-semibold text-neutral-600">販売数合計</span>
-                  <span className="font-bold">...</span>
+                  <span className="font-bold">{shop?.total_sales_count.toLocaleString()}</span>
                 </div>
               </div>
           </div>
