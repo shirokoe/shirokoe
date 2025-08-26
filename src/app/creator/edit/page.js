@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaInfoCircle, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaMoneyBillWave } from "react-icons/fa";
+import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaInfoCircle, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaMoneyBillWave, FaTrash, FaExclamationTriangle } from "react-icons/fa";
 import { MdAccountBalance } from "react-icons/md";
 import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
@@ -66,30 +66,26 @@ export default function CreatorEditPage() {
   const [user, setUser] = useState(null);
   const [shop, setShop] = useState(null);
   const [loading, setLoading] = useState(true);
-
   const [isStripeEnabled, setIsStripeEnabled] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
   
   const [shopName, setShopName] = useState("");
   const [editingShopName, setEditingShopName] = useState(false);
   const [shopNameInput, setShopNameInput] = useState("");
-  
   const [bannerUrl, setBannerUrl] = useState(null);
   const [bannerBlob, setBannerBlob] = useState(null);
   const [bannerPreviewUrl, setBannerPreviewUrl] = useState(null);
-  
   const [isCropping, setIsCropping] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-
   const [availableAmount, setAvailableAmount] = useState(12000);
-
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
 
-  useEffect(() => {
-    const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
+      setLoading(true);
       const { data: auth } = await supabase.auth.getUser();
       const currentUser = auth?.user ?? null;
       if (!currentUser) { router.replace("/login"); return; }
@@ -113,31 +109,24 @@ export default function CreatorEditPage() {
                 setIsStripeEnabled(true);
             }
         }
-
       } else {
         router.replace("/createShop");
         return;
       }
       setLoading(false);
-    };
-    fetchProfile();
   }, [router]);
 
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
   const handleSaveShopName = async () => {
-    if (shopNameInput.trim() === "") {
-      setError("ショップ名は必須です。");
-      return;
-    }
+    if (shopNameInput.trim() === "") { setError("ショップ名は必須です。"); return; }
     setBusy(true);
     setError("");
-
     try {
-      const { error: updateError } = await supabase
-        .from("shops")
-        .update({ shop_name: shopNameInput })
-        .eq("id", user.id);
+      const { error: updateError } = await supabase.from("shops").update({ shop_name: shopNameInput }).eq("id", user.id);
       if (updateError) throw updateError;
-      
       setShopName(shopNameInput);
       setEditingShopName(false);
     } catch (err) {
@@ -160,10 +149,7 @@ export default function CreatorEditPage() {
   }, []);
 
   const confirmCrop = async () => {
-    if (!bannerPreviewUrl || !croppedAreaPixels) {
-      setIsCropping(false);
-      return;
-    }
+    if (!bannerPreviewUrl || !croppedAreaPixels) { setIsCropping(false); return; }
     const blob = await getCroppedBlob(bannerPreviewUrl, croppedAreaPixels);
     setBannerBlob(blob);
     const croppedDataUrl = await readFileToDataUrl(blob);
@@ -173,43 +159,25 @@ export default function CreatorEditPage() {
 
   const cancelCrop = () => {
     setIsCropping(false);
-    if (!bannerBlob) {
-        setBannerPreviewUrl(null);
-    }
+    if (!bannerBlob) { setBannerPreviewUrl(null); }
   };
 
   const handleSaveBanner = async () => {
-    if (!bannerBlob || !user) {
-      setError("画像が選択されていません。");
-      return;
-    }
-    
+    if (!bannerBlob || !user) { setError("画像が選択されていません。"); return; }
     setBusy(true);
     setError("");
-
     try {
       const storage = supabase.storage.from("shop_banners");
-      
-      if (shop?.banner_image_path) {
-        await storage.remove([shop.banner_image_path]);
-      }
-      
+      if (shop?.banner_image_path) { await storage.remove([shop.banner_image_path]); }
       const newBannerPath = `${user.id}/${uuidv4()}.jpeg`;
-
       const { error: upErr } = await storage.upload(newBannerPath, bannerBlob, { contentType: "image/jpeg" });
       if (upErr) throw upErr;
-
-      const { error: updateError } = await supabase
-        .from("shops")
-        .update({ banner_image_path: newBannerPath })
-        .eq("id", user.id);
+      const { error: updateError } = await supabase.from("shops").update({ banner_image_path: newBannerPath }).eq("id", user.id);
       if (updateError) throw updateError;
-      
       const { data: newUrl } = supabase.storage.from("shop_banners").getPublicUrl(newBannerPath);
       setBannerUrl(newUrl.publicUrl);
       setBannerBlob(null);
       setBannerPreviewUrl(null);
-
     } catch (err) {
       setError(err.message ?? "バナー画像の更新に失敗しました。");
     } finally {
@@ -230,6 +198,22 @@ export default function CreatorEditPage() {
         setBusy(false);
     }
   };
+  
+  const handleResetStripe = async () => {
+    setBusy(true);
+    setError("");
+    try {
+        const { error } = await supabase.functions.invoke('reset-stripe-account', { method: 'POST' });
+        if (error) throw error;
+        await fetchProfile(); // 成功したらプロフィール情報を再取得
+        setShowResetModal(false);
+    } catch (err) {
+        setError("Stripeアカウントのリセットに失敗しました。");
+        console.error(err);
+    } finally {
+        setBusy(false);
+    }
+  };
 
   const handleWithdraw = () => {
     setBusy(true);
@@ -246,31 +230,18 @@ export default function CreatorEditPage() {
       <div className="min-h-screen w-full bg-neutral-900 text-neutral-100 flex flex-col items-center justify-center p-6">
         <h1 className="text-2xl font-bold mb-8">バナー画像を調整</h1>
         <div className="relative w-full max-w-4xl h-80 bg-neutral-800 rounded-2xl overflow-hidden shadow-xl">
-          <Cropper
-            image={bannerPreviewUrl}
-            crop={crop}
-            zoom={zoom}
-            aspect={3 / 1}
-            onCropChange={setCrop}
-            onZoomChange={setZoom}
-            onCropComplete={onCropComplete}
-          />
+          <Cropper image={bannerPreviewUrl} crop={crop} zoom={zoom} aspect={3 / 1} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete} />
         </div>
         <div className="flex flex-col md:flex-row gap-4 mt-8 w-full max-w-sm">
-          <button onClick={confirmCrop} className="flex-1 px-6 py-4 bg-lime-500 text-neutral-900 rounded-xl font-bold transition-transform transform hover:scale-105 flex items-center justify-center gap-2">
-            <FaCheck />
-            確定する
-          </button>
-          <button onClick={cancelCrop} className="flex-1 px-6 py-4 bg-neutral-700 text-white rounded-xl font-bold transition-transform transform hover:scale-105 flex items-center justify-center gap-2">
-            <FaTimes />
-            戻る
-          </button>
+          <button onClick={confirmCrop} className="flex-1 px-6 py-4 bg-lime-500 text-neutral-900 rounded-xl font-bold transition-transform transform hover:scale-105 flex items-center justify-center gap-2"><FaCheck />確定する</button>
+          <button onClick={cancelCrop} className="flex-1 px-6 py-4 bg-neutral-700 text-white rounded-xl font-bold transition-transform transform hover:scale-105 flex items-center justify-center gap-2"><FaTimes />戻る</button>
         </div>
       </div>
     );
   }
 
   return (
+    <>
     <div className="bg-neutral-100 min-h-screen px-6 py-12 text-neutral-900 font-sans">
       <div className="max-w-5xl mx-auto">
         <button onClick={() => router.push('/creator')} className="flex items-center gap-2 text-neutral-600 font-semibold mb-6 hover:text-lime-600 transition-colors"><FaArrowLeft /><span>マイページに戻る</span></button>
@@ -318,13 +289,16 @@ export default function CreatorEditPage() {
                             <FaCheck />口座登録済み
                         </div>
                     ) : (
-                        <button 
-                            className={`w-full px-4 py-4 rounded-xl font-bold transition-transform transform hover:scale-105 ${shop?.stripe_account_id ? "bg-yellow-400 text-yellow-900" : "bg-neutral-800 text-white"} flex items-center justify-center gap-2`} 
-                            onClick={handleStripeConnect} 
-                            disabled={busy}
-                        >
-                            {busy ? <FaSpinner className="animate-spin" /> : shop?.stripe_account_id ? <><FaExternalLinkAlt />登録手続きを続行/更新</> : <><FaExternalLinkAlt />Stripeで口座登録</>}
-                        </button>
+                        <div className="space-y-2">
+                            <button className={`w-full px-4 py-4 rounded-xl font-bold transition-transform transform hover:scale-105 ${shop?.stripe_account_id ? "bg-yellow-400 text-yellow-900" : "bg-neutral-800 text-white"} flex items-center justify-center gap-2`} onClick={handleStripeConnect} disabled={busy}>
+                                {busy ? <FaSpinner className="animate-spin" /> : shop?.stripe_account_id ? <><FaExternalLinkAlt />登録手続きを続行/更新</> : <><FaExternalLinkAlt />Stripeで口座登録</>}
+                            </button>
+                            {shop?.stripe_account_id && (
+                                <button onClick={() => setShowResetModal(true)} className="w-full text-xs text-neutral-500 hover:text-red-600 underline">
+                                    間違えましたか？登録をリセットする
+                                </button>
+                            )}
+                        </div>
                     )}
                 </div>
                 <div>
@@ -340,5 +314,22 @@ export default function CreatorEditPage() {
         </div>
       </div>
     </div>
+    {showResetModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
+            <FaExclamationTriangle className="text-5xl text-yellow-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Stripe連携をリセットしますか？</h2>
+            <p className="text-neutral-600 mb-6">現在連携されているStripeアカウントの情報が削除され、最初から口座登録をやり直せるようになります。この操作は取り消せません。</p>
+            <div className="flex gap-4">
+              <button onClick={() => setShowResetModal(false)} className="flex-1 py-3 bg-neutral-200 text-neutral-800 rounded-xl font-bold" disabled={busy}>キャンセル</button>
+              <button onClick={handleResetStripe} className={`flex-1 py-3 bg-red-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 ${busy ? 'cursor-not-allowed' : ''}`} disabled={busy}>
+                {busy ? <FaSpinner className="animate-spin" /> : <FaTrash />}
+                <span>リセットする</span>
+              </button>
+            </div>
+          </div>
+        </div>
+    )}
+    </>
   );
 }
