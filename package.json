@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
+    "@stripe/stripe-js": "^7.9.0",
     "@supabase/supabase-js": "^2.55.0",
     "lucide-react": "^0.540.0",
     "next": "15.4.5",

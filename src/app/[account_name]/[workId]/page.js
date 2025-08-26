@@ -4,9 +4,14 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { FaPlay, FaPause, FaShoppingCart, FaSpinner, FaExclamationCircle, FaCalendarAlt, FaUsers, FaDownload } from "react-icons/fa";
+import { loadStripe } from '@stripe/stripe-js';
+
+// Stripeの初期化 (公開可能キーを.env.localファイルから読み込む)
+// NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_... のように設定してください
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 // =====================================================================
-// 波形アニメーション付きのカスタム再生ボタン
+// カスタム再生ボタンコンポーネント
 // =====================================================================
 function CustomPlayButton({ isPlaying, isLoading, onPlayClick }) {
   return (
@@ -19,7 +24,6 @@ function CustomPlayButton({ isPlaying, isLoading, onPlayClick }) {
         {isLoading ? (
           <FaSpinner className="text-4xl animate-spin" />
         ) : isPlaying ? (
-          // 再生中の波形アニメーション
           <div className="flex items-center justify-center gap-1 h-8">
             <span className="w-1 h-full bg-neutral-900 rounded-full animate-[wave_1s_ease-in-out_-0.4s_infinite]"></span>
             <span className="w-1 h-full bg-neutral-900 rounded-full animate-[wave_1s_ease-in-out_-0.2s_infinite]"></span>
@@ -47,7 +51,7 @@ export default function PublicWorkPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
-  const [isPurchased, setIsPurchased] = useState(false); // ★追加: 購入済みかどうかの状態
+  const [isPurchased, setIsPurchased] = useState(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
@@ -63,7 +67,6 @@ export default function PublicWorkPage() {
       return;
     }
 
-    // ★追加: ローカルストレージから購入履歴をチェック
     try {
         const purchases = JSON.parse(localStorage.getItem('shiroke_purchases')) || [];
         if (purchases.includes(workId)) {
@@ -118,47 +121,43 @@ export default function PublicWorkPage() {
     }
   };
   
+  // ★修正: Stripe CheckoutのEdge Functionを呼び出す
   const handlePurchase = async () => {
     setIsProcessingPurchase(true);
     setError("");
-    console.log("Stripe Checkout処理を開始します...");
-    setTimeout(() => {
-        alert("購入ありがとうございます！");
-        
-        // ★追加: 購入成功後、ローカルストレージに保存
-        try {
-            const purchases = JSON.parse(localStorage.getItem('shiroke_purchases')) || [];
-            if (!purchases.includes(work.id)) {
-                purchases.push(work.id);
-                localStorage.setItem('shiroke_purchases', JSON.stringify(purchases));
-            }
-            setIsPurchased(true); // UIをダウンロードボタンに切り替え
-        } catch(e) {
-            console.error("ローカルストレージへの保存に失敗", e);
-            setError("購入履歴の保存に失敗しました。");
+    try {
+        // サーバー側の決済ロボットを呼び出す
+        const { data, error: invokeError } = await supabase.functions.invoke('create-checkout-session', {
+            body: { workId: work.id },
+        });
+        if (invokeError) throw invokeError;
+
+        // Stripeの決済ページへ案内する
+        const stripe = await stripePromise;
+        const { error: stripeError } = await stripe.redirectToCheckout({
+            sessionId: data.sessionId,
+        });
+        if (stripeError) {
+            throw stripeError;
         }
-        
+    } catch (err) {
+        setError("決済ページの読み込みに失敗しました。");
+        console.error(err);
         setIsProcessingPurchase(false);
-    }, 2000);
+    }
   };
 
-  // ★追加: ダウンロード処理
   const handleDownload = async () => {
     setIsAudioLoading(true);
     const { data: audioUrlData } = supabase.storage.from('voice_datas').getPublicUrl(work.voice_data_path);
-    
     try {
         const response = await fetch(audioUrlData.publicUrl);
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `${work.title}.webm`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        a.remove();
+        a.style.display = 'none'; a.href = url; a.download = `${work.title}.webm`;
+        document.body.appendChild(a); a.click();
+        window.URL.revokeObjectURL(url); a.remove();
     } catch (err) {
         console.error("ダウンロードエラー:", err);
         setError("ダウンロードに失敗しました。");
@@ -195,92 +194,31 @@ export default function PublicWorkPage() {
 
   return (
     <div className="min-h-screen bg-neutral-100 text-neutral-800 flex items-center justify-center p-4">
-      <style jsx global>{`
-        @keyframes wave {
-          0%, 100% { height: 0.5rem; }
-          50% { height: 2rem; }
-        }
-      `}</style>
+      <style jsx global>{`@keyframes wave { 0%, 100% { height: 0.5rem; } 50% { height: 2rem; } }`}</style>
       <div className="w-full max-w-md mx-auto">
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           <div className="relative w-full aspect-[8/7] group">
-            <img
-              src={work.cover_url}
-              alt={work.title}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            {!isPurchased && ( // 購入済みでない場合のみプレビューボタンを表示
-              <CustomPlayButton 
-                isPlaying={isPlaying}
-                isLoading={isAudioLoading}
-                onPlayClick={handlePlayPause}
-              />
-            )}
-            <audio 
-              ref={audioRef}
-              onPlay={() => { setIsPlaying(true); setIsAudioLoading(false); }}
-              onPause={() => setIsPlaying(false)}
-              onEnded={() => setIsPlaying(false)}
-              onWaiting={() => setIsAudioLoading(true)}
-              onCanPlay={() => setIsAudioLoading(false)}
-              onTimeUpdate={() => {
-                if (audioRef.current && audioRef.current.currentTime >= PREVIEW_DURATION) {
-                  audioRef.current.pause();
-                }
-              }}
-              className="hidden" 
-            />
+            <img src={work.cover_url} alt={work.title} className="absolute inset-0 w-full h-full object-cover" />
+            {!isPurchased && <CustomPlayButton isPlaying={isPlaying} isLoading={isAudioLoading} onPlayClick={handlePlayPause} />}
+            <audio ref={audioRef} onPlay={() => { setIsPlaying(true); setIsAudioLoading(false); }} onPause={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)} onWaiting={() => setIsAudioLoading(true)} onCanPlay={() => setIsAudioLoading(false)} onTimeUpdate={() => { if (audioRef.current && audioRef.current.currentTime >= PREVIEW_DURATION) { audioRef.current.pause(); } }} className="hidden" />
           </div>
-
           <div className="p-8">
             <div className="text-center mb-6">
               <h1 className="text-4xl font-black leading-tight">{work.title}</h1>
-              <p 
-                onClick={() => router.push(`/shop/${shop.account_name}`)}
-                className="text-lg text-neutral-500 mt-2 cursor-pointer hover:text-lime-600 transition-colors"
-              >
-                by {shop.shop_name}
-              </p>
-              {!isPurchased && (
-                <p className="text-xs text-neutral-400 mt-3">(カバー画像をタップして5秒間プレビューできます)</p>
-              )}
+              <p onClick={() => router.push(`/${shop.account_name}`)} className="text-lg text-neutral-500 mt-2 cursor-pointer hover:text-lime-600 transition-colors">by {shop.shop_name}</p>
+              {!isPurchased && <p className="text-xs text-neutral-400 mt-3">(カバー画像をタップして5秒間プレビューできます)</p>}
             </div>
-
             <div className="flex justify-center gap-6 text-neutral-500 mb-8">
-              <div className="flex items-center gap-2">
-                <FaCalendarAlt />
-                <span className="font-semibold">{new Date(work.created_at).toLocaleDateString()}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <FaUsers />
-                <span className="font-semibold">{work.sales_count} 人が購入済み</span>
-              </div>
+              <div className="flex items-center gap-2"><FaCalendarAlt /><span className="font-semibold">{new Date(work.created_at).toLocaleDateString()}</span></div>
+              <div className="flex items-center gap-2"><FaUsers /><span className="font-semibold">{work.sales_count} 人が購入済み</span></div>
             </div>
-
-            {/* ★修正: 購入済みかどうかでボタンを切り替え */}
             {isPurchased ? (
-              <button
-                onClick={handleDownload}
-                className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 bg-neutral-800 text-white`}
-                disabled={isAudioLoading}
-              >
-                {isAudioLoading ? (
-                  <><FaSpinner className="animate-spin" /><span>準備中...</span></>
-                ) : (
-                  <><FaDownload /><span>音声ファイルをダウンロード</span></>
-                )}
+              <button onClick={handleDownload} className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 bg-neutral-800 text-white`} disabled={isAudioLoading}>
+                {isAudioLoading ? <><FaSpinner className="animate-spin" /><span>準備中...</span></> : <><FaDownload /><span>音声ファイルをダウンロード</span></>}
               </button>
             ) : (
-              <button
-                onClick={handlePurchase}
-                className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 ${isProcessingPurchase ? 'bg-lime-600 cursor-not-allowed' : 'bg-lime-500'}`}
-                disabled={isProcessingPurchase}
-              >
-                {isProcessingPurchase ? (
-                  <><FaSpinner className="animate-spin" /><span>処理中...</span></>
-                ) : (
-                  <><FaShoppingCart /><span>¥{work.price} で購入する</span></>
-                )}
+              <button onClick={handlePurchase} className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 ${isProcessingPurchase ? 'bg-lime-600 cursor-not-allowed' : 'bg-lime-500'}`} disabled={isProcessingPurchase}>
+                {isProcessingPurchase ? <><FaSpinner className="animate-spin" /><span>処理中...</span></> : <><FaShoppingCart /><span>¥{work.price} で購入する</span></>}
               </button>
             )}
           </div>

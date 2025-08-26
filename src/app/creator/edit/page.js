@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { FaUserEdit, FaStore, FaMoneyBillWave, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaInfoCircle, FaSpinner, FaImage, FaUpload, FaArrowLeft } from "react-icons/fa";
+import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaInfoCircle, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaMoneyBillWave } from "react-icons/fa";
 import { MdAccountBalance } from "react-icons/md";
 import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
@@ -19,7 +19,6 @@ async function readFileToDataUrl(fileOrBlob) {
     reader.readAsDataURL(fileOrBlob);
   });
 }
-
 async function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -29,32 +28,17 @@ async function loadImage(src) {
     img.src = src;
   });
 }
-
 async function getCroppedBlob(imageSrc, croppedAreaPixels) {
   const image = await loadImage(imageSrc);
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
-
-  const MAX_WIDTH = 1600; // バナー用に解像度を少し上げる
+  const MAX_WIDTH = 1600;
   const scale = Math.min(1, MAX_WIDTH / croppedAreaPixels.width);
-
   canvas.width = Math.round(croppedAreaPixels.width * scale);
   canvas.height = Math.round(croppedAreaPixels.height * scale);
-
-  ctx.drawImage(
-    image,
-    croppedAreaPixels.x,
-    croppedAreaPixels.y,
-    croppedAreaPixels.width,
-    croppedAreaPixels.height,
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
+  ctx.drawImage(image, croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 0, 0, canvas.width, canvas.height);
   return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85); // 品質を少し上げる
+    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85);
   });
 }
 
@@ -97,7 +81,6 @@ export default function CreatorEditPage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
   const [availableAmount, setAvailableAmount] = useState(12000);
-  const [hasBankAccount, setHasBankAccount] = useState(false);
 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -130,7 +113,6 @@ export default function CreatorEditPage() {
           setBannerUrl(data.publicUrl);
         }
       } else {
-        // ショップが存在しない場合は作成ページへ
         router.replace("/createShop");
         return;
       }
@@ -190,7 +172,6 @@ export default function CreatorEditPage() {
 
   const cancelCrop = () => {
     setIsCropping(false);
-    // 元の画像に戻すためプレビューをリセット
     if (!bannerBlob) {
         setBannerPreviewUrl(null);
     }
@@ -235,12 +216,25 @@ export default function CreatorEditPage() {
     }
   };
 
-  const handleStripeConnect = () => {
+  // ★修正: Stripe ConnectのEdge Functionを呼び出す
+  const handleStripeConnect = async () => {
     setBusy(true);
-    setTimeout(() => {
-      setHasBankAccount(true);
-      setBusy(false);
-    }, 1500);
+    setError("");
+    try {
+        const { data, error } = await supabase.functions.invoke('stripe-connect', {
+            method: 'POST',
+        });
+
+        if (error) throw error;
+
+        // 返ってきたURLにリダイレクト
+        window.location.href = data.url;
+
+    } catch (err) {
+        setError("Stripeへの接続に失敗しました。");
+        console.error(err);
+        setBusy(false);
+    }
   };
 
   const handleWithdraw = () => {
@@ -305,9 +299,7 @@ export default function CreatorEditPage() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* 左側: ショップ情報 */}
             <div className="md:col-span-2 bg-white p-8 rounded-3xl shadow-md space-y-8">
-                {/* バナー画像変更 */}
                 <div>
                     <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">
                         <FaImage />
@@ -334,7 +326,6 @@ export default function CreatorEditPage() {
                     )}
                 </div>
 
-                {/* ショップ名編集 */}
                 <div>
                     <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">
                         <FaStore />
@@ -361,7 +352,6 @@ export default function CreatorEditPage() {
                     )}
                 </div>
 
-                {/* ショップURL */}
                 <div>
                     <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">
                         <FaUserEdit />
@@ -381,8 +371,9 @@ export default function CreatorEditPage() {
                         <MdAccountBalance />
                         口座登録
                     </label>
-                    <button className={`w-full px-4 py-4 rounded-xl font-bold transition-transform transform hover:scale-105 ${hasBankAccount ? "bg-lime-100 text-lime-800" : "bg-neutral-800 text-white"} flex items-center justify-center gap-2`} onClick={handleStripeConnect} disabled={busy || hasBankAccount}>
-                        {busy ? <FaSpinner className="animate-spin" /> : hasBankAccount ? <><FaCheck />口座登録済み</> : <><FaExternalLinkAlt />Stripeで口座登録</>}
+                    {/* ★修正: shop?.stripe_account_id を見てUIを切り替え */}
+                    <button className={`w-full px-4 py-4 rounded-xl font-bold transition-transform transform hover:scale-105 ${shop?.stripe_account_id ? "bg-lime-100 text-lime-800" : "bg-neutral-800 text-white"} flex items-center justify-center gap-2`} onClick={handleStripeConnect} disabled={busy || shop?.stripe_account_id}>
+                        {busy ? <FaSpinner className="animate-spin" /> : shop?.stripe_account_id ? <><FaCheck />口座登録済み</> : <><FaExternalLinkAlt />Stripeで口座登録</>}
                     </button>
                 </div>
 
@@ -393,7 +384,7 @@ export default function CreatorEditPage() {
                     </label>
                     <div className="flex flex-col justify-between items-center bg-lime-50 rounded-xl p-4">
                         <span className="font-black text-4xl text-lime-600">¥{availableAmount.toLocaleString()}</span>
-                        <button className={`w-full px-6 py-3 rounded-xl font-bold transition-all duration-300 mt-4 ${!hasBankAccount || availableAmount <= 0 || busy ? "bg-neutral-300 text-neutral-500 cursor-not-allowed" : "bg-lime-500 text-white hover:bg-lime-600 transform hover:scale-105"}`} onClick={handleWithdraw} disabled={!hasBankAccount || availableAmount <= 0 || busy}>
+                        <button className={`w-full px-6 py-3 rounded-xl font-bold transition-all duration-300 mt-4 ${!shop?.stripe_account_id || availableAmount <= 0 || busy ? "bg-neutral-300 text-neutral-500 cursor-not-allowed" : "bg-lime-500 text-white hover:bg-lime-600 transform hover:scale-105"}`} onClick={handleWithdraw} disabled={!shop?.stripe_account_id || availableAmount <= 0 || busy}>
                             {busy ? <FaSpinner className="animate-spin" /> : "振込申請"}
                         </button>
                     </div>
