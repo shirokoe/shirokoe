@@ -95,3 +95,4 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "サーバーで予期せぬエラーが発生しました。" }), { status: 500, headers: corsHeaders });
   }
 });
+

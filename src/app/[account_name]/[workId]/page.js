@@ -221,6 +221,7 @@ export default function PublicWorkPage() {
                 {isProcessingPurchase ? <><FaSpinner className="animate-spin" /><span>処理中...</span></> : <><FaShoppingCart /><span>¥{work.price} で購入する</span></>}
               </button>
             )}
+
           </div>
         </div>
       </div>
