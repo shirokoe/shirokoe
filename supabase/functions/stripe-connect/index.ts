@@ -9,8 +9,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ★修正: apiVersionを最新版に更新
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY"), {
-  apiVersion: "2022-11-15",
+  apiVersion: "2024-04-10",
   httpClient: Stripe.createFetchHttpClient(),
 });
 
