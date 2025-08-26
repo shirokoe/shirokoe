@@ -67,12 +67,12 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${Deno.env.get("SITE_URL")}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${Deno.env.get("SITE_URL")}/${work.shops.account_name}/${workId}`, // キャンセル時は作品ページに戻る
-      // ★追加: 購入情報をStripeに記憶させる
+      // ★修正: 成功時に作品ページに直接戻るようにURLを変更
+      success_url: `${Deno.env.get("SITE_URL")}/${work.shops.account_name}/${workId}?purchase_success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${Deno.env.get("SITE_URL")}/${work.shops.account_name}/${workId}`,
+      // ★追加: 購入された作品のIDをStripeに記憶させる
       metadata: {
         work_id: workId,
-        account_name: work.shops.account_name,
       },
       payment_intent_data: {
         application_fee_amount: Math.round(work.price * 0.20),

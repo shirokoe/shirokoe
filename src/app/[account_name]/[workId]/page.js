@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { FaPlay, FaPause, FaShoppingCart, FaSpinner, FaExclamationCircle, FaCalendarAlt, FaUsers, FaDownload } from "react-icons/fa";
+import { FaPlay, FaPause, FaShoppingCart, FaSpinner, FaExclamationCircle, FaCalendarAlt, FaUsers, FaDownload, FaCheckCircle } from "react-icons/fa";
 import { loadStripe } from '@stripe/stripe-js';
 
 // Stripeの初期化 (公開可能キーを.env.localファイルから読み込む)
-// NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_... のように設定してください
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 // =====================================================================
@@ -44,6 +43,7 @@ function CustomPlayButton({ isPlaying, isLoading, onPlayClick }) {
 export default function PublicWorkPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { account_name, workId } = params;
 
   const [work, setWork] = useState(null);
@@ -52,7 +52,7 @@ export default function PublicWorkPage() {
   const [error, setError] = useState("");
   const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
   const [isPurchased, setIsPurchased] = useState(false);
-
+  
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
@@ -60,47 +60,84 @@ export default function PublicWorkPage() {
   
   const PREVIEW_DURATION = 5;
 
-  const fetchWorkAndShop = useCallback(async () => {
-    if (!account_name || !workId) {
-      setError("無効なURLです。");
-      setLoading(false);
-      return;
-    }
+  // ★修正: 購入完了時の処理をここに統合
+  useEffect(() => {
+    const checkPurchaseStatus = async () => {
+      // 1. URLに purchase_success=true があるかチェック
+      if (searchParams.get('purchase_success') === 'true') {
+        const sessionId = searchParams.get('session_id');
+        if (!sessionId) {
+          setError("決済情報が見つかりません。");
+          return;
+        }
 
+        try {
+          setIsProcessingPurchase(true); // UIを「確認中」にする
+          
+          // 2. 決済が本物か、ロボットに確認してもらう
+          const { data, error: invokeError } = await supabase.functions.invoke(
+            "verify-and-get-download-url", // ★修正: 新しいロボットを呼び出す
+            { body: { session_id: sessionId } }
+          );
+          if (invokeError) throw invokeError;
+
+          const { downloadUrl, title, workId: purchasedWorkId } = data;
+          if (!downloadUrl || !title || !purchasedWorkId) {
+            throw new Error("ダウンロード情報の取得に失敗しました。");
+          }
+
+          // 3. ローカルストレージに保存
+          const purchases = JSON.parse(localStorage.getItem('shiroke_purchases')) || [];
+          if (!purchases.includes(purchasedWorkId)) {
+            purchases.push(purchasedWorkId);
+            localStorage.setItem('shiroke_purchases', JSON.stringify(purchases));
+          }
+          setIsPurchased(true);
+
+          // 4. 自動ダウンロードを開始
+          const response = await fetch(downloadUrl);
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none'; a.href = url; a.download = `${title}.webm`;
+          document.body.appendChild(a); a.click();
+          window.URL.revokeObjectURL(url); a.remove();
+
+          // 5. URLからクエリパラメータを削除して見た目をクリーンに
+          router.replace(`/${account_name}/${workId}`, { scroll: false });
+
+        } catch (err) {
+          console.error("購入処理の確認に失敗しました:", err);
+          setError(err.message || "購入処理の確認に失敗しました。");
+        } finally {
+            setIsProcessingPurchase(false);
+        }
+      }
+    };
+    checkPurchaseStatus();
+  }, [searchParams, workId, account_name, router]);
+
+  const fetchWorkAndShop = useCallback(async () => {
+    if (!account_name || !workId) { setError("無効なURLです。"); setLoading(false); return; }
     try {
         const purchases = JSON.parse(localStorage.getItem('shiroke_purchases')) || [];
-        if (purchases.includes(workId)) {
-            setIsPurchased(true);
-        }
-    } catch (e) {
-        console.error("ローカルストレージの読み込みに失敗", e);
-    }
-
+        if (purchases.includes(workId)) { setIsPurchased(true); }
+    } catch (e) { console.error("ローカルストレージの読み込みに失敗", e); }
+    
     const { data: shopData, error: shopError } = await supabase.from('shops').select('*').eq('account_name', account_name).single();
-    if (shopError || !shopData) {
-      setError("お探しのショップは見つかりませんでした。");
-      setLoading(false);
-      return;
-    }
+    if (shopError || !shopData) { setError("お探しのショップは見つかりませんでした。"); setLoading(false); return; }
     setShop(shopData);
 
     const { data: workData, error: workError } = await supabase.from('works').select('*').eq('id', workId).eq('user_id', shopData.id).single();
-    if (workError || !workData) {
-      setError("お探しの作品は見つからないか、現在非公開です。");
-      setLoading(false);
-      return;
-    }
+    if (workError || !workData) { setError("お探しの作品は見つからないか、現在非公開です。"); setLoading(false); return; }
 
     const { data: coverUrlData } = supabase.storage.from('work_covers').getPublicUrl(workData.cover_image_path);
     workData.cover_url = coverUrlData.publicUrl;
     setWork(workData);
     setLoading(false);
-
   }, [account_name, workId]);
 
-  useEffect(() => {
-    fetchWorkAndShop();
-  }, [fetchWorkAndShop]);
+  useEffect(() => { fetchWorkAndShop(); }, [fetchWorkAndShop]);
 
   const handlePlayPause = () => {
     if (!isAudioLoaded) {
@@ -110,36 +147,26 @@ export default function PublicWorkPage() {
       audioRef.current.play();
       setIsAudioLoaded(true);
     } else {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        if(audioRef.current.currentTime >= PREVIEW_DURATION) {
-            audioRef.current.currentTime = 0;
-        }
+      if (isPlaying) { audioRef.current.pause(); } else {
+        if(audioRef.current.currentTime >= PREVIEW_DURATION) { audioRef.current.currentTime = 0; }
         audioRef.current.play();
       }
     }
   };
   
-  // ★修正: Stripe CheckoutのEdge Functionを呼び出す
   const handlePurchase = async () => {
     setIsProcessingPurchase(true);
     setError("");
     try {
-        // サーバー側の決済ロボットを呼び出す
         const { data, error: invokeError } = await supabase.functions.invoke('create-checkout-session', {
             body: { workId: work.id },
         });
         if (invokeError) throw invokeError;
-
-        // Stripeの決済ページへ案内する
         const stripe = await stripePromise;
         const { error: stripeError } = await stripe.redirectToCheckout({
             sessionId: data.sessionId,
         });
-        if (stripeError) {
-            throw stripeError;
-        }
+        if (stripeError) { throw stripeError; }
     } catch (err) {
         setError("決済ページの読み込みに失敗しました。");
         console.error(err);
@@ -147,51 +174,23 @@ export default function PublicWorkPage() {
     }
   };
 
-  const handleDownload = async () => {
-    setIsAudioLoading(true);
-    const { data: audioUrlData } = supabase.storage.from('voice_datas').getPublicUrl(work.voice_data_path);
-    try {
-        const response = await fetch(audioUrlData.publicUrl);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none'; a.href = url; a.download = `${work.title}.webm`;
-        document.body.appendChild(a); a.click();
-        window.URL.revokeObjectURL(url); a.remove();
-    } catch (err) {
-        console.error("ダウンロードエラー:", err);
-        setError("ダウンロードに失敗しました。");
-    } finally {
-        setIsAudioLoading(false);
-    }
-  };
-
   if (loading) {
-    return (
-      <div className="min-h-screen bg-neutral-100 flex items-center justify-center">
-        <FaSpinner className="animate-spin text-4xl text-lime-500" />
-      </div>
-    );
+    return <div className="min-h-screen bg-neutral-100 flex items-center justify-center"><FaSpinner className="animate-spin text-4xl text-lime-500" /></div>;
   }
-
+  
   if (error) {
     return (
       <div className="min-h-screen bg-neutral-100 text-neutral-800 flex flex-col items-center justify-center text-center p-8">
         <FaExclamationCircle className="text-5xl text-red-500 mb-4" />
         <h1 className="text-2xl font-bold mb-2">エラーが発生しました</h1>
         <p className="text-neutral-500">{error}</p>
-        <button 
-            onClick={() => router.push('/')}
-            className="mt-8 px-6 py-3 bg-neutral-200 text-neutral-800 rounded-xl font-bold transition-transform transform hover:scale-105"
-        >
-            トップページに戻る
-        </button>
+        <button onClick={() => router.push('/')} className="mt-8 px-6 py-3 bg-neutral-200 text-neutral-800 rounded-xl font-bold transition-transform transform hover:scale-105">トップページに戻る</button>
       </div>
     );
   }
 
   if (!work || !shop) return null;
-
+  
   return (
     <div className="min-h-screen bg-neutral-100 text-neutral-800 flex items-center justify-center p-4">
       <style jsx global>{`@keyframes wave { 0%, 100% { height: 0.5rem; } 50% { height: 2rem; } }`}</style>
@@ -213,15 +212,15 @@ export default function PublicWorkPage() {
               <div className="flex items-center gap-2"><FaUsers /><span className="font-semibold">{work.sales_count} 人が購入済み</span></div>
             </div>
             {isPurchased ? (
-              <button onClick={handleDownload} className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 bg-neutral-800 text-white`} disabled={isAudioLoading}>
-                {isAudioLoading ? <><FaSpinner className="animate-spin" /><span>準備中...</span></> : <><FaDownload /><span>音声ファイルをダウンロード</span></>}
-              </button>
+                <div className="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 bg-lime-100 text-lime-800">
+                    <FaCheckCircle />
+                    <span>購入済みです</span>
+                </div>
             ) : (
               <button onClick={handlePurchase} className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 ${isProcessingPurchase ? 'bg-lime-600 cursor-not-allowed' : 'bg-lime-500'}`} disabled={isProcessingPurchase}>
                 {isProcessingPurchase ? <><FaSpinner className="animate-spin" /><span>処理中...</span></> : <><FaShoppingCart /><span>¥{work.price} で購入する</span></>}
               </button>
             )}
-
           </div>
         </div>
       </div>
