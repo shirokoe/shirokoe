@@ -9,7 +9,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ★修正: apiVersionを最新版に更新
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY"), {
   apiVersion: "2024-04-10",
   httpClient: Stripe.createFetchHttpClient(),
@@ -65,7 +64,8 @@ serve(async (req) => {
 
     try {
       const session = await stripe.checkout.sessions.create({
-        payment_method_types: ["card", "paypay"],
+        // ★修正: 支払い方法をカードのみに限定
+        payment_method_types: ["card"],
         line_items: [
           {
             price_data: {
