@@ -1,8 +1,8 @@
 // supabase/functions/create-checkout-session/index.ts
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
-import Stripe from "https://esm.sh/stripe@11.1.0?target=deno";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4";
+import Stripe from "https://esm.sh/stripe@15.12.0?target=deno";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,7 +20,14 @@ serve(async (req) => {
   }
 
   try {
-    const { workId } = await req.json();
+    let workId;
+    try {
+      const body = await req.json();
+      workId = body.workId;
+    } catch (e) {
+      return new Response(JSON.stringify({ error: "リクエストが不正です。" }), { status: 400, headers: corsHeaders });
+    }
+    
     if (!workId) {
       return new Response(JSON.stringify({ error: "作品IDがリクエストに含まれていません。" }), { status: 400, headers: corsHeaders });
     }
@@ -55,7 +62,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "このクリエイターはまだ決済情報が未登録のため、購入できません。" }), { status: 409, headers: corsHeaders });
     }
 
-    // Stripe API呼び出しを個別のtry-catchで囲む
     try {
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card", "paypay"],
@@ -95,4 +101,3 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "サーバーで予期せぬエラーが発生しました。" }), { status: 500, headers: corsHeaders });
   }
 });
-

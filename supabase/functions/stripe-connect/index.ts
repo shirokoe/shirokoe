@@ -1,10 +1,9 @@
 // supabase/functions/stripe-connect/index.ts
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
-import Stripe from "https://esm.sh/stripe@11.1.0?target=deno";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4";
+import Stripe from "https://esm.sh/stripe@15.12.0?target=deno";
 
-// ★追加: CORSヘッダー（通信の許可証）
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -16,7 +15,6 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY"), {
 });
 
 serve(async (req) => {
-  // ★追加: OPTIONSリクエスト（ブラウザからの事前確認）への対応
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
