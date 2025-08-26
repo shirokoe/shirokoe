@@ -37,10 +37,12 @@ serve(async (req) => {
       .eq("id", user.id)
       .single();
 
+    // StripeアカウントIDがDBになければ「未作成」と返す
     if (shopError || !shop.stripe_account_id) {
-      return new Response(JSON.stringify({ status: 'not_created' }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ isEnabled: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Stripeにアカウント情報を問い合わせる
     const account = await stripe.accounts.retrieve(shop.stripe_account_id);
 
     // charges_enabledがtrueなら、支払いを受け付ける準備が完了している
