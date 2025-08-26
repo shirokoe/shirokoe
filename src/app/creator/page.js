@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaMicrophone, FaCopy, FaPlay, FaStop, FaCalendarAlt, FaUsers, FaCropAlt } from "react-icons/fa";
+import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaMicrophone, FaCopy, FaPlay, FaStop, FaCalendarAlt, FaUsers, FaCropAlt, FaInfoCircle } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
 import { v4 as uuidv4 } from 'uuid';
@@ -52,14 +52,79 @@ function LoadingScreen() {
 }
 
 // =====================================================================
-// 録音UIコンポーネント (UI表示に特化)
+// 録音UIコンポーネント
 // =====================================================================
-function RecordingUI({ countdown, stream, onCancel }) {
+function RecordingUI({ onFinish, onCancel }) {
+    const [countdown, setCountdown] = useState(3);
+    const [status, setStatus] = useState('preparing');
+    const [stream, setStream] = useState(null);
     const canvasRef = useRef(null);
     const animationFrameRef = useRef(null);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
 
     useEffect(() => {
-        if (!stream || !canvasRef.current) return;
+        let timer;
+        if (status === 'preparing') {
+            timer = setInterval(() => {
+                setCountdown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        setStatus('recording');
+                        return 30;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        } else if (status === 'recording') {
+            mediaRecorderRef.current?.start();
+            timer = setInterval(() => {
+                setCountdown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        mediaRecorderRef.current?.stop();
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [status]);
+
+    useEffect(() => {
+        const init = async () => {
+            try {
+                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                setStream(audioStream);
+                mediaRecorderRef.current = new MediaRecorder(audioStream);
+                audioChunksRef.current = [];
+                mediaRecorderRef.current.ondataavailable = (event) => {
+                    audioChunksRef.current.push(event.data);
+                };
+                mediaRecorderRef.current.onstop = () => {
+                    if (audioChunksRef.current.length > 0) {
+                        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                        onFinish(audioBlob);
+                    } else {
+                        onCancel();
+                    }
+                    audioStream.getTracks().forEach(track => track.stop());
+                };
+            } catch (err) {
+                console.error("マイクへのアクセスが拒否されました。", err);
+                onCancel();
+            }
+        };
+        init();
+        
+        return () => {
+            stream?.getTracks().forEach(track => track.stop());
+        }
+    }, [onFinish, onCancel]);
+    
+    useEffect(() => {
+        if (status !== 'recording' || !stream || !canvasRef.current) return;
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const analyser = audioContext.createAnalyser();
         const source = audioContext.createMediaStreamSource(stream);
@@ -93,19 +158,37 @@ function RecordingUI({ countdown, stream, onCancel }) {
             cancelAnimationFrame(animationFrameRef.current);
             audioContext.close();
         };
-    }, [stream]);
+    }, [status, stream]);
+
+    const handleCancel = () => {
+        audioChunksRef.current = [];
+        if (mediaRecorderRef.current?.state === "recording") {
+            mediaRecorderRef.current.stop();
+        } else {
+            onCancel();
+        }
+    };
 
     return (
         <div className="fixed inset-0 bg-neutral-900 text-white flex flex-col items-center justify-center p-6 z-50">
             <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full opacity-50"></canvas>
             <div className="relative z-10 flex flex-col items-center text-center">
-                <div className="font-mono text-8xl font-black text-lime-500 mb-8 tabular-nums">
-                    00:{String(countdown).padStart(2, '0')}
-                </div>
-                <button onClick={onCancel} className="group flex items-center gap-3 px-8 py-4 bg-transparent border-2 border-red-600 text-red-600 rounded-full font-bold text-lg transition-all duration-300 hover:bg-red-600 hover:text-white transform hover:scale-110">
-                    <FaStop className="transition-transform duration-300 group-hover:rotate-90" />
-                    録音を中断
-                </button>
+                {status === 'preparing' ? (
+                    <>
+                        <p className="text-3xl text-neutral-300 mb-8 animate-pulse">静かに、深く、あなたの声を。</p>
+                        <div className="font-mono text-8xl font-black text-white">{countdown}</div>
+                    </>
+                ) : (
+                    <>
+                        <div className="font-mono text-8xl font-black text-lime-500 mb-8 tabular-nums">
+                            00:{String(countdown).padStart(2, '0')}
+                        </div>
+                        <button onClick={handleCancel} className="group flex items-center gap-3 px-8 py-4 bg-transparent border-2 border-red-600 text-red-600 rounded-full font-bold text-lg transition-all duration-300 hover:bg-red-600 hover:text-white transform hover:scale-110">
+                            <FaStop className="transition-transform duration-300 group-hover:rotate-90" />
+                            録音を中断
+                        </button>
+                    </>
+                )}
             </div>
         </div>
     );
@@ -121,10 +204,7 @@ export default function CreatorPage() {
   const [loading, setLoading] = useState(true);
   const [works, setWorks] = useState([]);
   const [copyFeedback, setCopyFeedback] = useState("");
-  
-  const [recordingStatus, setRecordingStatus] = useState('idle');
-  const [stream, setStream] = useState(null);
-  const [countdown, setCountdown] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
   
   const [newAudioBlob, setNewAudioBlob] = useState(null);
   const [newAudioUrl, setNewAudioUrl] = useState(null);
@@ -139,10 +219,6 @@ export default function CreatorPage() {
   const [croppedImageBlob, setCroppedImageBlob] = useState(null);
   const [croppedImageUrl, setCroppedImageUrl] = useState(null);
   const [isCropperOpen, setIsCropperOpen] = useState(false);
-
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const isCancelledRef = useRef(false);
 
   const fetchWorks = async (userId) => {
     if (!userId) return;
@@ -164,26 +240,6 @@ export default function CreatorPage() {
     };
     fetchProfile();
   }, [router]);
-  
-  useEffect(() => {
-    if (recordingStatus !== 'recording') return;
-
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          if (mediaRecorderRef.current?.state === 'recording') {
-            mediaRecorderRef.current.stop();
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [recordingStatus]);
-
 
   const resetPublishForm = () => {
     setNewAudioBlob(null);
@@ -205,53 +261,15 @@ export default function CreatorPage() {
     setTimeout(() => setCopyFeedback(""), 2000);
   };
 
-  const startRecording = async () => {
-    resetPublishForm();
-    isCancelledRef.current = false;
-    try {
-      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setStream(audioStream);
-      
-      mediaRecorderRef.current = new MediaRecorder(audioStream);
-      audioChunksRef.current = [];
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
-      mediaRecorderRef.current.onstop = () => {
-        audioStream.getTracks().forEach(track => track.stop());
-        setRecordingStatus('idle');
-        if (isCancelledRef.current) {
-          setStream(null);
-          return;
-        }
-        if (audioChunksRef.current.length > 0) {
-            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-            setNewAudioBlob(audioBlob);
-            setNewAudioUrl(URL.createObjectURL(audioBlob));
-        }
-        setStream(null);
-      };
+  const handleRecordingFinish = useCallback((audioBlob) => {
+    setNewAudioBlob(audioBlob);
+    setNewAudioUrl(URL.createObjectURL(audioBlob));
+    setIsRecording(false);
+  }, []);
 
-      setRecordingStatus('recording');
-      setCountdown(30);
-      mediaRecorderRef.current.start();
-      
-    } catch (err) {
-      console.error("マイクへのアクセスが拒否されました。", err);
-      setError("マイクへのアクセス許可が必要です。");
-    }
-  };
-
-  const cancelRecording = () => {
-    isCancelledRef.current = true;
-    if (mediaRecorderRef.current?.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-    } else {
-        stream?.getTracks().forEach(track => track.stop());
-        setRecordingStatus('idle');
-        setStream(null);
-    }
-  };
+  const handleRecordingCancel = useCallback(() => {
+    setIsRecording(false);
+  }, []);
 
   const publishWork = async () => {
     if (!workTitle.trim()) { setError("タイトルは必須です。"); return; }
@@ -322,7 +340,7 @@ export default function CreatorPage() {
   };
 
   if (loading) return <LoadingScreen />;
-  if (recordingStatus === 'recording') return <RecordingUI status={recordingStatus} countdown={countdown} stream={stream} onCancel={cancelRecording} />;
+  if (isRecording) return <RecordingUI onFinish={handleRecordingFinish} onCancel={handleRecordingCancel} />;
 
   if (newAudioBlob) {
     return (
@@ -354,13 +372,27 @@ export default function CreatorPage() {
                 </div>
             </div>
             <div className="flex gap-4">
-                <button onClick={publishWork} className={`flex-1 px-6 py-4 rounded-xl font-bold text-white transition-transform transform hover:scale-105 flex items-center justify-center gap-2 ${publishing ? 'bg-lime-600 cursor-not-allowed' : 'bg-lime-500'}`} disabled={publishing}>
+                {/* ★修正: 口座未登録の場合はボタンを無効化 */}
+                <button 
+                    onClick={publishWork} 
+                    className={`flex-1 px-6 py-4 rounded-xl font-bold text-white transition-transform transform hover:scale-105 flex items-center justify-center gap-2 ${publishing || !shop?.stripe_account_id ? 'bg-lime-300 cursor-not-allowed' : 'bg-lime-500'}`} 
+                    disabled={publishing || !shop?.stripe_account_id}
+                >
                     {publishing ? (<><FaSpinner className="animate-spin" /><span>公開中...</span></>) : (<><FaUpload /><span>作品を公開</span></>)}
                 </button>
                 <button onClick={resetPublishForm} className="flex-1 px-6 py-4 bg-neutral-200 text-neutral-800 rounded-xl font-bold transition-transform transform hover:scale-105" disabled={publishing}>
                     キャンセル
                 </button>
             </div>
+            {/* ★追加: 口座未登録の場合の案内メッセージ */}
+            {!shop?.stripe_account_id && (
+                <div className="mt-4 text-center text-sm text-red-600 font-semibold p-3 bg-red-50 rounded-lg">
+                    <p>作品を公開するには、売上を受け取るための口座登録が必要です。</p>
+                    <a href="/creator/edit" className="underline hover:text-red-800">
+                        こちらから登録してください
+                    </a>
+                </div>
+            )}
           </div>
         </div>
         {isCropperOpen && (
@@ -387,6 +419,22 @@ export default function CreatorPage() {
   return (
     <div className="bg-neutral-100 min-h-screen px-6 py-12 text-neutral-900 font-sans">
       <div className="max-w-7xl mx-auto">
+        {/* ★追加: 口座未登録の場合の案内バナー */}
+        {!shop?.stripe_account_id && (
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-r-lg mb-8" role="alert">
+                <div className="flex">
+                    <div className="py-1"><FaInfoCircle className="mr-3" /></div>
+                    <div>
+                        <p className="font-bold">はじめに</p>
+                        <p className="text-sm">最初の作品を公開する前に、売上を受け取るための口座を登録しましょう。</p>
+                        <button onClick={() => router.push('/creator/edit')} className="mt-2 px-4 py-2 bg-yellow-500 text-white text-sm font-semibold rounded-lg hover:bg-yellow-600">
+                            口座を登録する
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white p-8 rounded-3xl shadow-md">
@@ -417,7 +465,7 @@ export default function CreatorPage() {
             <div className="bg-white p-8 rounded-3xl shadow-md text-center">
                 <h2 className="text-2xl font-bold mb-4">新しい作品を録音</h2>
                 <p className="text-neutral-500 mb-6 max-w-md mx-auto">スタジオに入り、30秒間の録音を開始します。最高のテイクをファンに届けましょう。</p>
-                <button onClick={startRecording} className="w-full max-w-xs mx-auto py-5 bg-lime-500 text-neutral-900 rounded-xl font-bold text-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-3">
+                <button onClick={() => setIsRecording(true)} className="w-full max-w-xs mx-auto py-5 bg-lime-500 text-neutral-900 rounded-xl font-bold text-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-3">
                     <FaMicrophone />
                     <span>スタジオに入る</span>
                 </button>
