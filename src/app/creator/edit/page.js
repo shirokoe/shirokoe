@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaInfoCircle, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaTrash, FaExclamationTriangle } from "react-icons/fa";
+import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaInfoCircle, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaTrash, FaExclamationTriangle, FaPercentage } from "react-icons/fa";
 import { MdAccountBalance } from "react-icons/md";
 import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
@@ -295,17 +295,28 @@ export default function CreatorEditPage() {
                     )}
                 </div>
             </div>
-            {/* ★修正: 振込申請セクションを、自動振込の案内に変更 */}
-            <div>
-                <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">
-                    売上の振込について
-                </label>
-                <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm space-y-2">
-                    <p>Stripeに登録された口座へ、**毎週月曜日に自動で売上が振り込まれます。**</p>
-                    <p className="text-xs text-neutral-400">※ Stripeの規定により、最初の振込は支払いがあってから7〜14日後、それ以降は4営業日の遅延が発生します。</p>
-                    <a href="https://stripe.com/docs/payouts" target="_blank" rel="noopener noreferrer" className="text-lime-600 font-semibold underline flex items-center gap-1">
-                        Stripeの振込スケジュールについて詳しく <FaExternalLinkAlt size={12} />
-                    </a>
+            {/* ★修正: 手数料と振込の案内を追加 */}
+            <div className="space-y-4">
+                <div>
+                    <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">
+                        <FaPercentage />
+                        手数料について
+                    </label>
+                    <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm">
+                        <p>ファンが支払った金額から消費税と決済手数料を差し引いた後、**売上の80%**があなたの取り分となります。</p>
+                    </div>
+                </div>
+                <div>
+                    <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">
+                        売上の振込について
+                    </label>
+                    <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm space-y-2">
+                        <p>Stripeに登録された口座へ、**毎週月曜日に自動で売上が振り込まれます。**</p>
+                        <p className="text-xs text-neutral-400">※ Stripeの規定により、最初の振込は支払いがあってから7〜14日後、それ以降は4営業日の遅延が発生します。</p>
+                        <a href="https://stripe.com/docs/payouts" target="_blank" rel="noopener noreferrer" className="text-lime-600 font-semibold underline flex items-center gap-1">
+                            Stripeの振込スケジュールについて詳しく <FaExternalLinkAlt size={12} />
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
