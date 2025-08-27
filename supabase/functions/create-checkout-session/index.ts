@@ -60,8 +60,15 @@ serve(async (req) => {
     const totalApplicationFee = platformFee + consumptionTax + stripeProcessingFee;
 
     const session = await stripe.checkout.sessions.create({
-      // ★修正: この行を削除することで、Stripeダッシュボードの設定が自動で反映されます。
-      // payment_method_types: ["card", "paypay"], 
+      // ★修正: payment_method_typesを削除し、Stripeの自動選択に任せる
+      // これにより、カード、Apple Pay、Google Payなどが自動で有効になります
+      payment_method_options: {
+        custom: {
+          // あなたがStripeの管理画面で作成したIDをここに設定します
+          'cpmt_1RzgahCeUQylL6OiXvLG05kS': {}, // PayPay
+          'cpmt_1RzgbUCeUQylL6OiE2gmNN9i': {}, // PayPal
+        },
+      },
       line_items: [
         {
           price_data: {
