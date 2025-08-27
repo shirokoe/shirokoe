@@ -52,18 +52,16 @@ serve(async (req) => {
       throw new Error("クリエイターのStripeアカウントが設定されていません。");
     }
 
-    const priceIncludingTax = work.price;
-    const priceExcludingTax = Math.round(priceIncludingTax / 1.1);
-    const consumptionTax = priceIncludingTax - priceExcludingTax;
-    const platformFee = Math.round(priceExcludingTax * 0.20);
-    const stripeProcessingFee = Math.round(priceIncludingTax * 0.036);
-    const totalApplicationFee = platformFee + consumptionTax + stripeProcessingFee;
+    const priceIncludingTax = work.price; // 500円
+    const priceExcludingTax = Math.round(priceIncludingTax / 1.1); // 税抜価格 (約455円)
+    const creatorShare = Math.round(priceExcludingTax * 0.80); // クリエイターの取り分 (約364円)
+    
+    // あなたの取り分 = 全体 - クリエイターの取り分
+    const totalApplicationFee = priceIncludingTax - creatorShare; // 500 - 364 = 136円
 
     const session = await stripe.checkout.sessions.create({
-      // ★修正: Stripeに決済方法の選択を完全に自動化させるための命令
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      // ★修正: この行を削除することで、Stripeダッシュボードの設定が自動で反映されます。
+      // payment_method_types: ["card"],
       line_items: [
         {
           price_data: {
