@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaInfoCircle, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaTrash, FaExclamationTriangle, FaPercentage } from "react-icons/fa";
+import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaInfoCircle, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaMoneyBillWave, FaTrash, FaExclamationTriangle, FaPercentage } from "react-icons/fa";
 import { MdAccountBalance } from "react-icons/md";
 import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
@@ -81,6 +81,8 @@ export default function CreatorEditPage() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
+  const [availableAmount, setAvailableAmount] = useState(0);
 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -295,15 +297,14 @@ export default function CreatorEditPage() {
                     )}
                 </div>
             </div>
-            {/* ★修正: 手数料と振込の案内を追加 */}
             <div className="space-y-4">
                 <div>
                     <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">
                         <FaPercentage />
-                        手数料について
+                        手数料とあなたの取り分
                     </label>
-                    <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm">
-                        <p>ファンが支払った金額から消費税と決済手数料を差し引いた後、**売上の80%**があなたの取り分となります。</p>
+                    <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm space-y-1">
+                        <p>振り込まれるのは、売上から消費税、Stripe決済手数料、および私たちのプラットフォーム手数料(税抜価格の20%)を差し引いた金額です。</p>
                     </div>
                 </div>
                 <div>
@@ -312,7 +313,7 @@ export default function CreatorEditPage() {
                     </label>
                     <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm space-y-2">
                         <p>Stripeに登録された口座へ、**毎週月曜日に自動で売上が振り込まれます。**</p>
-                        <p className="text-xs text-neutral-400">※ Stripeの規定により、最初の振込は支払いがあってから7〜14日後、それ以降は4営業日の遅延が発生します。</p>
+                        <p className="text-xs text-neutral-400">※ Stripeの規定により、最初の振込は支払いがあってから7〜14日後、それ以降は数営業日の遅延が発生します。</p>
                         <a href="https://stripe.com/docs/payouts" target="_blank" rel="noopener noreferrer" className="text-lime-600 font-semibold underline flex items-center gap-1">
                             Stripeの振込スケジュールについて詳しく <FaExternalLinkAlt size={12} />
                         </a>
@@ -327,7 +328,11 @@ export default function CreatorEditPage() {
           <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
             <FaExclamationTriangle className="text-5xl text-yellow-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold mb-2">Stripe連携をリセットしますか？</h2>
-            <p className="text-neutral-600 mb-6">現在連携されているStripeアカウントの情報が削除され、最初から口座登録をやり直せるようになります。この操作は取り消せません。</p>
+            {/* ★修正: 振込に関する注意書きを追加 */}
+            <div className="text-neutral-600 mb-6 text-sm space-y-2">
+                <p>現在連携されているStripeアカウントの情報が削除され、最初から口座登録をやり直せるようになります。この操作は取り消せません。</p>
+                <p className="font-bold bg-yellow-50 p-2 rounded-lg">もし、リセット前のStripeアカウントに売上残高がある場合、その金額は以前登録された銀行口座へ、Stripeのスケジュールに従って後日自動で振り込まれますのでご安心ください。</p>
+            </div>
             <div className="flex gap-4">
               <button onClick={() => setShowResetModal(false)} className="flex-1 py-3 bg-neutral-200 text-neutral-800 rounded-xl font-bold" disabled={busy}>キャンセル</button>
               <button onClick={handleResetStripe} className={`flex-1 py-3 bg-red-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 ${busy ? 'cursor-not-allowed' : ''}`} disabled={busy}>
