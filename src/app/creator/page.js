@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaMicrophone, FaCopy, FaPlay, FaStop, FaCalendarAlt, FaUsers, FaCropAlt } from "react-icons/fa";
+import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaMicrophone, FaCopy, FaPlay, FaStop, FaCalendarAlt, FaUsers, FaCropAlt, FaInfoCircle } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
 import { v4 as uuidv4 } from 'uuid';
@@ -54,12 +54,12 @@ function LoadingScreen() {
 // =====================================================================
 // 録音UIコンポーネント (UI表示に特化)
 // =====================================================================
-function RecordingUI({ status, countdown, stream, onCancel }) {
+function RecordingUI({ countdown, stream, onCancel }) {
     const canvasRef = useRef(null);
     const animationFrameRef = useRef(null);
 
     useEffect(() => {
-        if (status !== 'recording' || !stream || !canvasRef.current) return;
+        if (!stream || !canvasRef.current) return;
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const analyser = audioContext.createAnalyser();
         const source = audioContext.createMediaStreamSource(stream);
@@ -93,28 +93,19 @@ function RecordingUI({ status, countdown, stream, onCancel }) {
             cancelAnimationFrame(animationFrameRef.current);
             audioContext.close();
         };
-    }, [status, stream]);
+    }, [stream]);
 
     return (
         <div className="fixed inset-0 bg-neutral-900 text-white flex flex-col items-center justify-center p-6 z-50">
             <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full opacity-50"></canvas>
             <div className="relative z-10 flex flex-col items-center text-center">
-                {status === 'preparing' ? (
-                    <>
-                        <p className="text-3xl text-neutral-300 mb-8 animate-pulse">静かに、深く、あなたの声を。</p>
-                        <div className="font-mono text-8xl font-black text-white">{countdown}</div>
-                    </>
-                ) : (
-                    <>
-                        <div className="font-mono text-8xl font-black text-lime-500 mb-8 tabular-nums">
-                            00:{String(countdown).padStart(2, '0')}
-                        </div>
-                        <button onClick={onCancel} className="group flex items-center gap-3 px-8 py-4 bg-transparent border-2 border-red-600 text-red-600 rounded-full font-bold text-lg transition-all duration-300 hover:bg-red-600 hover:text-white transform hover:scale-110">
-                            <FaStop className="transition-transform duration-300 group-hover:rotate-90" />
-                            録音を中断
-                        </button>
-                    </>
-                )}
+                <div className="font-mono text-8xl font-black text-lime-500 mb-8 tabular-nums">
+                    00:{String(countdown).padStart(2, '0')}
+                </div>
+                <button onClick={onCancel} className="group flex items-center gap-3 px-8 py-4 bg-transparent border-2 border-red-600 text-red-600 rounded-full font-bold text-lg transition-all duration-300 hover:bg-red-600 hover:text-white transform hover:scale-110">
+                    <FaStop className="transition-transform duration-300 group-hover:rotate-90" />
+                    録音を中断
+                </button>
             </div>
         </div>
     );
@@ -131,7 +122,7 @@ export default function CreatorPage() {
   const [works, setWorks] = useState([]);
   const [copyFeedback, setCopyFeedback] = useState("");
   
-  const [recordingStatus, setRecordingStatus] = useState('idle');
+  const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState(null);
   const [countdown, setCountdown] = useState(0);
   
@@ -149,6 +140,9 @@ export default function CreatorPage() {
   const [croppedImageUrl, setCroppedImageUrl] = useState(null);
   const [isCropperOpen, setIsCropperOpen] = useState(false);
 
+  // ★追加: Stripeの有効化状態を管理
+  const [isStripeEnabled, setIsStripeEnabled] = useState(false);
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const isCancelledRef = useRef(false);
@@ -156,11 +150,7 @@ export default function CreatorPage() {
   const fetchWorks = async (userId) => {
     if (!userId) return;
     const { data, error } = await supabase.from('works').select('*').eq('user_id', userId).order('created_at', { ascending: false });
-    if (error) { 
-        console.error("作品の取得に失敗しました:", error); 
-    } else { 
-        setWorks(data);
-    }
+    if (error) { console.error("作品の取得に失敗しました:", error); } else { setWorks(data); }
   };
 
   const fetchProfile = useCallback(async () => {
@@ -171,6 +161,14 @@ export default function CreatorPage() {
       const { data: shopData } = await supabase.from("shops").select("*").eq("id", currentUser.id).maybeSingle();
       if (!shopData) { router.replace("/createShop"); return; }
       setShop(shopData);
+      
+      // ★追加: Stripeアカウントの有効状態を確認
+      if (shopData.stripe_account_id) {
+          const { data: statusData, error: statusError } = await supabase.functions.invoke('get-stripe-account-status');
+          if (statusError) { console.error("Stripeステータス取得エラー", statusError); }
+          else if (statusData.isEnabled) { setIsStripeEnabled(true); }
+      }
+      
       await fetchWorks(currentUser.id);
       setLoading(false);
   }, [router]);
@@ -180,27 +178,24 @@ export default function CreatorPage() {
   }, [fetchProfile]);
   
   useEffect(() => {
-    if (recordingStatus === 'idle') return;
+    if (!isRecording) return;
+
     const timer = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          if (recordingStatus === 'preparing') {
-            setRecordingStatus('recording');
-            setCountdown(30);
-            mediaRecorderRef.current?.start();
-          } else if (recordingStatus === 'recording') {
-            if (mediaRecorderRef.current?.state === 'recording') {
-              mediaRecorderRef.current.stop();
-            }
+          if (mediaRecorderRef.current?.state === 'recording') {
+            mediaRecorderRef.current.stop();
           }
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
+
     return () => clearInterval(timer);
-  }, [recordingStatus]);
+  }, [isRecording]);
+
 
   const resetPublishForm = () => {
     setNewAudioBlob(null);
@@ -236,7 +231,7 @@ export default function CreatorPage() {
       };
       mediaRecorderRef.current.onstop = () => {
         audioStream.getTracks().forEach(track => track.stop());
-        setRecordingStatus('idle');
+        setIsRecording(false);
         if (isCancelledRef.current) {
           setStream(null);
           return;
@@ -249,8 +244,9 @@ export default function CreatorPage() {
         setStream(null);
       };
 
-      setRecordingStatus('preparing');
-      setCountdown(3);
+      setIsRecording(true);
+      setCountdown(30);
+      mediaRecorderRef.current.start();
       
     } catch (err) {
       console.error("マイクへのアクセスが拒否されました。", err);
@@ -264,7 +260,7 @@ export default function CreatorPage() {
         mediaRecorderRef.current.stop();
     } else {
         stream?.getTracks().forEach(track => track.stop());
-        setRecordingStatus('idle');
+        setIsRecording(false);
         setStream(null);
     }
   };
@@ -338,7 +334,7 @@ export default function CreatorPage() {
   };
 
   if (loading) return <LoadingScreen />;
-  if (recordingStatus !== 'idle') return <RecordingUI status={recordingStatus} countdown={countdown} stream={stream} onCancel={cancelRecording} />;
+  if (isRecording) return <RecordingUI countdown={countdown} stream={stream} onCancel={cancelRecording} />;
 
   if (newAudioBlob) {
     return (
@@ -432,11 +428,29 @@ export default function CreatorPage() {
 
             <div className="bg-white p-8 rounded-3xl shadow-md text-center">
                 <h2 className="text-2xl font-bold mb-4">新しい作品を録音</h2>
-                <p className="text-neutral-500 mb-6 max-w-md mx-auto">スタジオに入り、30秒間の録音を開始します。最高のテイクをファンに届けましょう。</p>
-                <button onClick={startRecording} className="w-full max-w-xs mx-auto py-5 bg-lime-500 text-neutral-900 rounded-xl font-bold text-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-3">
-                    <FaMicrophone />
-                    <span>スタジオに入る</span>
-                </button>
+                {/* ★修正: Stripeが有効でない場合の案内 */}
+                {!isStripeEnabled ? (
+                    <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-r-lg text-left">
+                        <div className="flex">
+                            <div className="py-1"><FaInfoCircle className="mr-3" /></div>
+                            <div>
+                                <p className="font-bold">はじめに</p>
+                                <p className="text-sm">作品を公開するには、売上を受け取るための口座登録を完了させる必要があります。</p>
+                                <button onClick={() => router.push('/creator/edit')} className="mt-2 px-4 py-2 bg-yellow-500 text-white text-sm font-semibold rounded-lg hover:bg-yellow-600">
+                                    口座を登録する
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <p className="text-neutral-500 mb-6 max-w-md mx-auto">スタジオに入り、30秒間の録音を開始します。最高のテイクをファンに届けましょう。</p>
+                        <button onClick={startRecording} className="w-full max-w-xs mx-auto py-5 bg-lime-500 text-neutral-900 rounded-xl font-bold text-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-3">
+                            <FaMicrophone />
+                            <span>スタジオに入る</span>
+                        </button>
+                    </>
+                )}
             </div>
 
             <div className="bg-white p-8 rounded-3xl shadow-md">
@@ -475,7 +489,6 @@ export default function CreatorPage() {
           <div className="lg:col-span-1 bg-white p-8 rounded-3xl shadow-md h-fit">
               <h2 className="text-2xl font-bold mb-4">アナリティクス</h2>
               <div className="space-y-4 text-lg">
-                {/* ★修正: 実際のデータを表示 */}
                 <div className="flex justify-between items-center bg-lime-50 p-4 rounded-lg">
                   <span className="font-semibold text-lime-800">総売上</span>
                   <span className="font-black text-2xl text-lime-600">¥{(shop?.total_sales_count * 400).toLocaleString()}</span>

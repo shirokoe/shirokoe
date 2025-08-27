@@ -31,13 +31,18 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "認証されていません" }), { status: 401, headers: corsHeaders });
     }
     
-    const { data: shop, error: shopError } = await supabaseClient
+    // ★注意: ここでは管理者権限のクライアントを使います
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL"),
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+    );
+
+    const { data: shop, error: shopError } = await supabaseAdmin
       .from("shops")
-      .select("stripe_account_id")
+      .select("stripe_account_id, stripe_charges_enabled")
       .eq("id", user.id)
       .single();
 
-    // StripeアカウントIDがDBになければ「未作成」と返す
     if (shopError || !shop.stripe_account_id) {
       return new Response(JSON.stringify({ isEnabled: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -47,6 +52,18 @@ serve(async (req) => {
 
     // charges_enabledがtrueなら、支払いを受け付ける準備が完了している
     const isEnabled = account.charges_enabled;
+
+    // ★追加: データベースの情報が古ければ、最新の状態に更新する
+    if (shop.stripe_charges_enabled !== isEnabled) {
+      const { error: updateError } = await supabaseAdmin
+        .from("shops")
+        .update({ stripe_charges_enabled: isEnabled })
+        .eq("id", user.id);
+
+      if (updateError) {
+        console.error("Stripe有効状態の更新に失敗:", updateError);
+      }
+    }
 
     return new Response(JSON.stringify({ isEnabled: isEnabled }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

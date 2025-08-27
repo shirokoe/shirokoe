@@ -3,10 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { FaPlay, FaPause, FaShoppingCart, FaSpinner, FaExclamationCircle, FaCalendarAlt, FaUsers, FaDownload, FaCheckCircle } from "react-icons/fa";
+import { FaPlay, FaPause, FaShoppingCart, FaSpinner, FaExclamationCircle, FaCalendarAlt, FaUsers, FaDownload, FaCheckCircle, FaLock, FaArrowLeft } from "react-icons/fa";
 import { loadStripe } from '@stripe/stripe-js';
 
-// Stripeの初期化 (公開可能キーを.env.localファイルから読み込む)
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 // =====================================================================
@@ -60,41 +59,23 @@ export default function PublicWorkPage() {
   
   const PREVIEW_DURATION = 5;
 
-  // ★修正: 購入完了時の処理をここに統合
   useEffect(() => {
     const checkPurchaseStatus = async () => {
-      // 1. URLに purchase_success=true があるかチェック
       if (searchParams.get('purchase_success') === 'true') {
         const sessionId = searchParams.get('session_id');
-        if (!sessionId) {
-          setError("決済情報が見つかりません。");
-          return;
-        }
-
+        if (!sessionId) { setError("決済情報が見つかりません。"); return; }
         try {
-          setIsProcessingPurchase(true); // UIを「確認中」にする
-          
-          // 2. 決済が本物か、ロボットに確認してもらう
-          const { data, error: invokeError } = await supabase.functions.invoke(
-            "verify-and-get-download-url",
-            { body: { session_id: sessionId } }
-          );
+          setIsProcessingPurchase(true);
+          const { data, error: invokeError } = await supabase.functions.invoke("verify-and-get-download-url", { body: { session_id: sessionId } });
           if (invokeError) throw invokeError;
-
           const { downloadUrl, title, workId: purchasedWorkId } = data;
-          if (!downloadUrl || !title || !purchasedWorkId) {
-            throw new Error("ダウンロード情報の取得に失敗しました。");
-          }
-
-          // 3. ローカルストレージに保存
+          if (!downloadUrl || !title || !purchasedWorkId) { throw new Error("ダウンロード情報の取得に失敗しました。"); }
           const purchases = JSON.parse(localStorage.getItem('shiroke_purchases')) || [];
           if (!purchases.includes(purchasedWorkId)) {
             purchases.push(purchasedWorkId);
             localStorage.setItem('shiroke_purchases', JSON.stringify(purchases));
           }
           setIsPurchased(true);
-
-          // 4. 自動ダウンロードを開始
           const response = await fetch(downloadUrl);
           const blob = await response.blob();
           const url = window.URL.createObjectURL(blob);
@@ -102,10 +83,7 @@ export default function PublicWorkPage() {
           a.style.display = 'none'; a.href = url; a.download = `${title}.webm`;
           document.body.appendChild(a); a.click();
           window.URL.revokeObjectURL(url); a.remove();
-
-          // 5. URLからクエリパラメータを削除して見た目をクリーンに
           router.replace(`/${account_name}/${workId}`, { scroll: false });
-
         } catch (err) {
           console.error("購入処理の確認に失敗しました:", err);
           setError(err.message || "購入処理の確認に失敗しました。");
@@ -124,7 +102,7 @@ export default function PublicWorkPage() {
         if (purchases.includes(workId)) { setIsPurchased(true); }
     } catch (e) { console.error("ローカルストレージの読み込みに失敗", e); }
     
-    const { data: shopData, error: shopError } = await supabase.from('shops').select('*').eq('account_name', account_name).single();
+    const { data: shopData, error: shopError } = await supabase.from('shops').select('*, stripe_charges_enabled').eq('account_name', account_name).single();
     if (shopError || !shopData) { setError("お探しのショップは見つかりませんでした。"); setLoading(false); return; }
     setShop(shopData);
 
@@ -175,7 +153,7 @@ export default function PublicWorkPage() {
   };
 
   const handleDownload = async () => {
-    setIsAudioLoading(true); // スピナー表示のため
+    setIsAudioLoading(true);
     const { data: audioUrlData } = supabase.storage.from('voice_datas').getPublicUrl(work.voice_data_path);
     try {
         const response = await fetch(audioUrlData.publicUrl);
@@ -203,7 +181,12 @@ export default function PublicWorkPage() {
         <FaExclamationCircle className="text-5xl text-red-500 mb-4" />
         <h1 className="text-2xl font-bold mb-2">エラーが発生しました</h1>
         <p className="text-neutral-500">{error}</p>
-        <button onClick={() => router.push('/')} className="mt-8 px-6 py-3 bg-neutral-200 text-neutral-800 rounded-xl font-bold transition-transform transform hover:scale-105">トップページに戻る</button>
+        <button 
+            onClick={() => router.push('/')}
+            className="mt-8 px-6 py-3 bg-neutral-200 text-neutral-800 rounded-xl font-bold transition-transform transform hover:scale-105"
+        >
+            トップページに戻る
+        </button>
       </div>
     );
   }
@@ -217,14 +200,14 @@ export default function PublicWorkPage() {
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           <div className="relative w-full aspect-[8/7] group">
             <img src={work.cover_url} alt={work.title} className="absolute inset-0 w-full h-full object-cover" />
-            {!isPurchased && <CustomPlayButton isPlaying={isPlaying} isLoading={isAudioLoading} onPlayClick={handlePlayPause} />}
+            {!isPurchased && shop.stripe_charges_enabled && <CustomPlayButton isPlaying={isPlaying} isLoading={isAudioLoading} onPlayClick={handlePlayPause} />}
             <audio ref={audioRef} onPlay={() => { setIsPlaying(true); setIsAudioLoading(false); }} onPause={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)} onWaiting={() => setIsAudioLoading(true)} onCanPlay={() => setIsAudioLoading(false)} onTimeUpdate={() => { if (audioRef.current && audioRef.current.currentTime >= PREVIEW_DURATION) { audioRef.current.pause(); } }} className="hidden" />
           </div>
           <div className="p-8">
             <div className="text-center mb-6">
               <h1 className="text-4xl font-black leading-tight">{work.title}</h1>
               <p onClick={() => router.push(`/${shop.account_name}`)} className="text-lg text-neutral-500 mt-2 cursor-pointer hover:text-lime-600 transition-colors">by {shop.shop_name}</p>
-              {!isPurchased && <p className="text-xs text-neutral-400 mt-3">(カバー画像をタップして5秒間プレビューできます)</p>}
+              {!isPurchased && shop.stripe_charges_enabled && <p className="text-xs text-neutral-400 mt-3">(カバー画像をタップして5秒間プレビューできます)</p>}
             </div>
             <div className="flex justify-center gap-6 text-neutral-500 mb-8">
               <div className="flex items-center gap-2"><FaCalendarAlt /><span className="font-semibold">{new Date(work.created_at).toLocaleDateString()}</span></div>
@@ -234,11 +217,29 @@ export default function PublicWorkPage() {
                 <button onClick={handleDownload} className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 bg-neutral-800 text-white`} disabled={isAudioLoading}>
                     {isAudioLoading ? <><FaSpinner className="animate-spin" /><span>準備中...</span></> : <><FaDownload /><span>再度ダウンロード</span></>}
                 </button>
-            ) : (
+            ) : shop.stripe_charges_enabled ? (
               <button onClick={handlePurchase} className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 ${isProcessingPurchase ? 'bg-lime-600 cursor-not-allowed' : 'bg-lime-500'}`} disabled={isProcessingPurchase}>
                 {isProcessingPurchase ? <><FaSpinner className="animate-spin" /><span>処理中...</span></> : <><FaShoppingCart /><span>¥{work.price} で購入する</span></>}
               </button>
+            ) : (
+                <div className="text-center">
+                    <button className="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 bg-neutral-200 text-neutral-500 cursor-not-allowed" disabled>
+                        <FaLock />
+                        <span>現在購入できません</span>
+                    </button>
+                    <p className="text-xs text-neutral-400 mt-3">クリエイターの準備が完了するまでお待ちください。</p>
+                </div>
             )}
+            {/* ★追加: ショップトップに戻るボタン */}
+            <div className="mt-4 text-center">
+                <button 
+                    onClick={() => router.push(`/${shop.account_name}`)}
+                    className="text-sm text-neutral-500 hover:text-lime-600 font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                    <FaArrowLeft />
+                    <span>{shop.shop_name}のトップに戻る</span>
+                </button>
+            </div>
           </div>
         </div>
       </div>

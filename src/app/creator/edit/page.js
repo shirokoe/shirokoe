@@ -82,8 +82,6 @@ export default function CreatorEditPage() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
-  const [availableAmount, setAvailableAmount] = useState(0);
-
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -209,13 +207,14 @@ export default function CreatorEditPage() {
     try {
         const { error } = await supabase.functions.invoke('reset-stripe-account', { method: 'POST' });
         if (error) throw error;
-        await fetchProfile();
-        setShowResetModal(false);
+        
+        window.location.reload();
+
     } catch (err) {
         setError("Stripeアカウントのリセットに失敗しました。");
         console.error(err);
-    } finally {
         setBusy(false);
+        setShowResetModal(false);
     }
   };
 
@@ -249,11 +248,12 @@ export default function CreatorEditPage() {
 
             <div>
                 <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3"><FaImage />バナー画像</label>
-                <div className="w-full h-40 border-2 border-dashed border-neutral-300 rounded-xl bg-neutral-50 overflow-hidden flex flex-col items-center justify-center cursor-pointer relative transition-colors hover:border-lime-500 group">
-                    <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={onPickBanner} />
+                {/* ★修正: divをlabelに変更し、inputを中に移動 */}
+                <label className="w-full h-40 border-2 border-dashed border-neutral-300 rounded-xl bg-neutral-50 overflow-hidden flex flex-col items-center justify-center cursor-pointer relative transition-colors hover:border-lime-500 group">
+                    <input type="file" accept="image/*" className="hidden" onChange={onPickBanner} />
                     {bannerPreviewUrl ? <img src={bannerPreviewUrl} alt="banner preview" className="h-full w-full object-cover" /> : bannerUrl ? <img src={bannerUrl} alt="current banner" className="h-full w-full object-cover" /> : <span className="text-neutral-500 text-sm font-semibold">クリックして画像を選択</span>}
                     <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"><div className="text-white font-bold flex items-center gap-2"><FaUpload /><span>画像を{bannerUrl || bannerPreviewUrl ? '変更' : '選択'}</span></div></div>
-                </div>
+                </label>
                 {bannerBlob && <div className="flex justify-end mt-4"><button type="button" onClick={handleSaveBanner} className="px-5 py-2 bg-lime-500 text-white rounded-full text-sm font-semibold shadow-md flex items-center gap-2 hover:bg-lime-600 transition-colors" disabled={busy}>{busy ? <FaSpinner className="animate-spin" /> : <><FaCheck />バナーを保存</>}</button></div>}
             </div>
             <div>
@@ -328,10 +328,11 @@ export default function CreatorEditPage() {
           <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
             <FaExclamationTriangle className="text-5xl text-yellow-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold mb-2">Stripe連携をリセットしますか？</h2>
-            {/* ★修正: 振込に関する注意書きを追加 */}
             <div className="text-neutral-600 mb-6 text-sm space-y-2">
                 <p>現在連携されているStripeアカウントの情報が削除され、最初から口座登録をやり直せるようになります。この操作は取り消せません。</p>
-                <p className="font-bold bg-yellow-50 p-2 rounded-lg">もし、リセット前のStripeアカウントに売上残高がある場合、その金額は以前登録された銀行口座へ、Stripeのスケジュールに従って後日自動で振り込まれますのでご安心ください。</p>
+                <p className="font-bold bg-yellow-50 p-2 rounded-lg">
+                    もし、リセット前のStripeアカウントに売上残高がある場合、その金額は以前登録された銀行口座へ、Stripeのスケジュールに従って後日自動で振り込まれますのでご安心ください。
+                </p>
             </div>
             <div className="flex gap-4">
               <button onClick={() => setShowResetModal(false)} className="flex-1 py-3 bg-neutral-200 text-neutral-800 rounded-xl font-bold" disabled={busy}>キャンセル</button>
