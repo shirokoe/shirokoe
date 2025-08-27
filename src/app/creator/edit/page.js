@@ -72,14 +72,18 @@ export default function CreatorEditPage() {
   const [shopName, setShopName] = useState("");
   const [editingShopName, setEditingShopName] = useState(false);
   const [shopNameInput, setShopNameInput] = useState("");
+  
   const [bannerUrl, setBannerUrl] = useState(null);
   const [bannerBlob, setBannerBlob] = useState(null);
   const [bannerPreviewUrl, setBannerPreviewUrl] = useState(null);
+  
   const [isCropping, setIsCropping] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-  const [availableAmount, setAvailableAmount] = useState(12000);
+  
+  const [availableAmount, setAvailableAmount] = useState(0);
+
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -107,10 +111,17 @@ export default function CreatorEditPage() {
                 console.error("Stripeステータス取得エラー", statusError);
             } else if (statusData.isEnabled) {
                 setIsStripeEnabled(true);
+                const { data: balanceData, error: balanceError } = await supabase.functions.invoke('get-stripe-balance');
+                if (balanceError) {
+                    console.error("Stripe残高取得エラー", balanceError);
+                } else {
+                    // ★修正: マイナス残高は0円として表示する
+                    setAvailableAmount(Math.max(0, balanceData.availableAmount));
+                }
             }
         }
       } else {
-        router.replace("/createShop");
+        router.replace("/create-shop");
         return;
       }
       setLoading(false);
@@ -205,7 +216,7 @@ export default function CreatorEditPage() {
     try {
         const { error } = await supabase.functions.invoke('reset-stripe-account', { method: 'POST' });
         if (error) throw error;
-        await fetchProfile(); // 成功したらプロフィール情報を再取得
+        await fetchProfile();
         setShowResetModal(false);
     } catch (err) {
         setError("Stripeアカウントのリセットに失敗しました。");
@@ -215,12 +226,24 @@ export default function CreatorEditPage() {
     }
   };
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     setBusy(true);
-    setTimeout(() => {
-      setAvailableAmount(0);
-      setBusy(false);
-    }, 1500);
+    setError("");
+    try {
+        const { data, error } = await supabase.functions.invoke('create-stripe-payout', {
+            method: 'POST',
+        });
+        if (error) throw error;
+        
+        alert(`${(data.amount).toLocaleString()}円の振込申請が完了しました。`);
+        await fetchProfile();
+
+    } catch (err) {
+        setError(err.message || "振込申請に失敗しました。");
+        console.error(err);
+    } finally {
+        setBusy(false);
+    }
   };
 
   if (loading) return <LoadingScreen />;
@@ -284,22 +307,22 @@ export default function CreatorEditPage() {
             <div className="md:col-span-1 bg-white p-8 rounded-3xl shadow-md space-y-8">
                 <div>
                     <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3"><MdAccountBalance />口座登録</label>
-                    {isStripeEnabled ? (
-                        <div className="w-full px-4 py-4 rounded-xl font-bold bg-lime-100 text-lime-800 flex items-center justify-center gap-2">
-                            <FaCheck />口座登録済み
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
+                    <div className="space-y-2">
+                        {isStripeEnabled ? (
+                            <div className="w-full px-4 py-4 rounded-xl font-bold bg-lime-100 text-lime-800 flex items-center justify-center gap-2">
+                                <FaCheck />口座登録済み
+                            </div>
+                        ) : (
                             <button className={`w-full px-4 py-4 rounded-xl font-bold transition-transform transform hover:scale-105 ${shop?.stripe_account_id ? "bg-yellow-400 text-yellow-900" : "bg-neutral-800 text-white"} flex items-center justify-center gap-2`} onClick={handleStripeConnect} disabled={busy}>
                                 {busy ? <FaSpinner className="animate-spin" /> : shop?.stripe_account_id ? <><FaExternalLinkAlt />登録手続きを続行/更新</> : <><FaExternalLinkAlt />Stripeで口座登録</>}
                             </button>
-                            {shop?.stripe_account_id && (
-                                <button onClick={() => setShowResetModal(true)} className="w-full text-xs text-neutral-500 hover:text-red-600 underline">
-                                    間違えましたか？登録をリセットする
-                                </button>
-                            )}
-                        </div>
-                    )}
+                        )}
+                        {shop?.stripe_account_id && (
+                            <button onClick={() => setShowResetModal(true)} className="w-full text-xs text-neutral-500 hover:text-red-600 underline">
+                                間違えましたか？登録をリセットする
+                            </button>
+                        )}
+                    </div>
                 </div>
                 <div>
                     <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3"><FaMoneyBillWave />振込可能額</label>
