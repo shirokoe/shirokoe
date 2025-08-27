@@ -52,18 +52,16 @@ serve(async (req) => {
       throw new Error("クリエイターのStripeアカウントが設定されていません。");
     }
 
-    // ★修正: 消費税と手数料を正確に計算
-    const priceIncludingTax = work.price; // 500円
-    const priceExcludingTax = Math.round(priceIncludingTax / 1.1); // 税抜価格 (約455円)
-    const consumptionTax = priceIncludingTax - priceExcludingTax; // 消費税 (約45円)
-    const platformFee = Math.round(priceExcludingTax * 0.20); // あなたのプラットフォーム手数料 (約91円)
-    const stripeProcessingFee = Math.round(priceIncludingTax * 0.036); // Stripe手数料 (3.6%と仮定) = 18円
-
-    // あなたが徴収する合計額 = プラットフォーム手数料 + 消費税 + Stripe手数料
-    const totalApplicationFee = platformFee + consumptionTax + stripeProcessingFee; // 約 91 + 45 + 18 = 154円
+    const priceIncludingTax = work.price;
+    const priceExcludingTax = Math.round(priceIncludingTax / 1.1);
+    const consumptionTax = priceIncludingTax - priceExcludingTax;
+    const platformFee = Math.round(priceExcludingTax * 0.20);
+    const stripeProcessingFee = Math.round(priceIncludingTax * 0.036);
+    const totalApplicationFee = platformFee + consumptionTax + stripeProcessingFee;
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
+      // ★修正: この行を削除することで、Stripeダッシュボードの設定が自動で反映されます。
+      // payment_method_types: ["card", "paypay"], 
       line_items: [
         {
           price_data: {
@@ -78,12 +76,12 @@ serve(async (req) => {
       ],
       mode: "payment",
       success_url: `${Deno.env.get("SITE_URL")}/${work.shops.account_name}/${workId}?purchase_success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${Deno.env.get("SITE_URL")}/$s{work.shops.account_name}/${workId}`,
+      cancel_url: `${Deno.env.get("SITE_URL")}/${work.shops.account_name}/${workId}`,
       metadata: {
         work_id: workId,
       },
       payment_intent_data: {
-        application_fee_amount: totalApplicationFee, // ★修正: 新しい合計額を設定
+        application_fee_amount: totalApplicationFee,
         transfer_data: {
           destination: creatorStripeAccountId,
         },
