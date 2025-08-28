@@ -490,8 +490,8 @@ export default function CreatorPage() {
               <h2 className="text-2xl font-bold mb-4">アナリティクス</h2>
               <div className="space-y-4 text-lg">
                 <div className="flex justify-between items-center bg-lime-50 p-4 rounded-lg">
-                  <span className="font-semibold text-lime-800">総売上</span>
-                  <span className="font-black text-2xl text-lime-600">¥{(shop?.total_sales_count * 400).toLocaleString()}</span>
+                  <span className="font-semibold text-lime-800">総売上(税込)</span>
+                  <span className="font-black text-2xl text-lime-600">¥{(shop?.total_sales_count * 500).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center bg-neutral-100 p-4 rounded-lg">
                   <span className="font-semibold text-neutral-600">販売数合計</span>

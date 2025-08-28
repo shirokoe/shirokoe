@@ -30,22 +30,32 @@ export default function RegisterPage() {
     }
 
     try {
-      // signUpは、ユーザーが既に存在する場合でもエラーではなく、
-      // isNewUser: false を返しますが、確認メールは再送されます。
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
       });
 
+      // ★修正: Supabaseからのエラーを最優先で処理します
       if (signUpError) {
-        // その他の予期せぬエラー
-        setError(signUpError.message);
-        setLoading(false);
-        return;
+        if (signUpError.message.includes("User already registered")) {
+          setError("このメールアドレスは既に使用されています。ログインしてください。");
+        } else {
+          setError(signUpError.message);
+        }
+      } else if (data.user) {
+        // ★修正: ユーザーの「最後のログイン履歴」を確認します
+        if (data.user.last_sign_in_at) {
+          // ログイン履歴がある場合、それは既に登録済みのユーザーです。
+          setError("このメールアドレスは既に使用されています。ログインしてください。");
+        } else {
+          // ログイン履歴がない場合、それは新規ユーザーか、
+          // または未確認のユーザーなので、確認メールを送るのが正しい挙動です。
+          setStep("verify");
+        }
+      } else {
+        // このケースは通常発生しませんが、念のためのエラー処理です。
+        setError("予期せぬエラーが発生しました。");
       }
-      
-      // 登録/メール再送が成功したら確認ステップへ
-      setStep("verify");
 
     } catch (err) {
       setError(err.message || "エラーが発生しました");

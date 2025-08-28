@@ -58,26 +58,41 @@ export default function WorkDetailPage() {
     fetchWork();
   }, [fetchWork]);
 
+  // ★修正: 削除ロジックを、クライアント側で完結する堅牢な方法に変更
   const handleDelete = async () => {
     setIsDeleting(true);
     setError("");
 
     try {
-      // Supabaseに作成した 'delete_work' 関数を呼び出す
-      const { error: rpcError } = await supabase.rpc('delete_work', {
-        work_id: work.id
-      });
-
-      if (rpcError) {
-        throw rpcError;
+      // ステップ1: Storageからカバー画像を削除
+      if (work.cover_image_path) {
+        const { error: coverError } = await supabase.storage
+          .from('work_covers')
+          .remove([work.cover_image_path]);
+        if (coverError) throw new Error(`カバー画像の削除に失敗: ${coverError.message}`);
       }
+      
+      // ステップ2: Storageから音声データを削除
+      if (work.voice_data_path) {
+         const { error: voiceError } = await supabase.storage
+          .from('voice_datas')
+          .remove([work.voice_data_path]);
+        if (voiceError) throw new Error(`音声データの削除に失敗: ${voiceError.message}`);
+      }
+
+      // ステップ3: worksテーブルから作品情報を削除
+      const { error: dbError } = await supabase
+        .from('works')
+        .delete()
+        .eq('id', workId);
+      if (dbError) throw new Error(`データベースからの削除に失敗: ${dbError.message}`);
 
       // 成功したらクリエイターページに戻る
       router.push("/creator");
 
-    } catch (deleteError) {
-      console.error("削除エラー:", deleteError);
-      setError("作品の削除に失敗しました。");
+    } catch (err) {
+      console.error("削除処理中にエラーが発生:", err);
+      setError(err.message || "作品の削除に失敗しました。");
       setIsDeleting(false);
       setShowDeleteModal(false);
     }
@@ -86,8 +101,7 @@ export default function WorkDetailPage() {
   const handleCopyWorkUrl = async () => {
     const { data: shopData } = await supabase.from("shops").select("account_name").eq("id", work.user_id).single();
     if (shopData) {
-        // const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/${shopData.account_name}/${work.id}`;
-        const workUrl = `http://localhost:3000/${shopData.account_name}/${work.id}`;
+        const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/${shopData.account_name}/${work.id}`;
         await navigator.clipboard.writeText(workUrl);
         setCopyFeedback("作品URLをコピーしました！");
         setTimeout(() => setCopyFeedback(""), 2000);
@@ -205,4 +219,3 @@ export default function WorkDetailPage() {
     </>
   );
 }
-//削除の処理がうまくいかない。

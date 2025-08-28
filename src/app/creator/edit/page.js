@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaInfoCircle, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaMoneyBillWave, FaTrash, FaExclamationTriangle, FaPercentage } from "react-icons/fa";
+import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaInfoCircle, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaTrash, FaExclamationTriangle, FaPercentage } from "react-icons/fa";
 import { MdAccountBalance } from "react-icons/md";
 import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
@@ -248,7 +248,6 @@ export default function CreatorEditPage() {
 
             <div>
                 <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3"><FaImage />バナー画像</label>
-                {/* ★修正: divをlabelに変更し、inputを中に移動 */}
                 <label className="w-full h-40 border-2 border-dashed border-neutral-300 rounded-xl bg-neutral-50 overflow-hidden flex flex-col items-center justify-center cursor-pointer relative transition-colors hover:border-lime-500 group">
                     <input type="file" accept="image/*" className="hidden" onChange={onPickBanner} />
                     {bannerPreviewUrl ? <img src={bannerPreviewUrl} alt="banner preview" className="h-full w-full object-cover" /> : bannerUrl ? <img src={bannerUrl} alt="current banner" className="h-full w-full object-cover" /> : <span className="text-neutral-500 text-sm font-semibold">クリックして画像を選択</span>}
@@ -303,8 +302,12 @@ export default function CreatorEditPage() {
                         <FaPercentage />
                         手数料とあなたの取り分
                     </label>
+                    {/* ★修正: 手数料の説明を、よりシンプルで誠実な内容に更新 */}
                     <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm space-y-1">
-                        <p>振り込まれるのは、売上から消費税、Stripe決済手数料、および私たちのプラットフォーム手数料(税抜価格の20%)を差し引いた金額です。</p>
+                        <p>あなたの取り分は、**税抜販売価格の80%**（1作品あたり約364円）です。</p>
+                        <p className="text-xs text-neutral-400">
+                            Stripeの決済手数料は、私たちのプラットフォーム手数料から負担しますので、ご安心ください。
+                        </p>
                     </div>
                 </div>
                 <div>
