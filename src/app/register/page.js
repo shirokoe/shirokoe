@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { FaEnvelope, FaLock, FaUserPlus, FaCheckCircle, FaSpinner } from "react-icons/fa";
+import { FaEnvelope, FaLock, FaUserPlus, FaCheckCircle, FaSpinner, FaInfoCircle } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
@@ -30,31 +30,19 @@ export default function RegisterPage() {
     }
 
     try {
+      // ★修正: Edge Functionへの呼び出しを完全に削除し、signUpの応答だけをシンプルに処理します
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
       });
 
-      // ★修正: Supabaseからのエラーを最優先で処理します
       if (signUpError) {
-        if (signUpError.message.includes("User already registered")) {
-          setError("このメールアドレスは既に使用されています。ログインしてください。");
-        } else {
-          setError(signUpError.message);
-        }
-      } else if (data.user) {
-        // ★修正: ユーザーの「最後のログイン履歴」を確認します
-        if (data.user.last_sign_in_at) {
-          // ログイン履歴がある場合、それは既に登録済みのユーザーです。
-          setError("このメールアドレスは既に使用されています。ログインしてください。");
-        } else {
-          // ログイン履歴がない場合、それは新規ユーザーか、
-          // または未確認のユーザーなので、確認メールを送るのが正しい挙動です。
-          setStep("verify");
-        }
+        // Supabaseが明確なエラーを返した場合 (主に、パスワードが短すぎるなどのバリデーションエラー)
+        setError(signUpError.message);
       } else {
-        // このケースは通常発生しませんが、念のためのエラー処理です。
-        setError("予期せぬエラーが発生しました。");
+        // signUpが成功した場合、それは「新規ユーザー」または「既存だが未確認のユーザー」です。
+        // どちらのケースでもSupabaseは確認メールを送信するため、確認ステップに進むのが正しい挙動です。
+        setStep("verify");
       }
 
     } catch (err) {
@@ -138,19 +126,28 @@ export default function RegisterPage() {
       )}
 
       {step === "verify" && (
-        <div className="w-full max-w-md bg-white text-neutral-800 p-10 rounded-3xl shadow-2xl text-center">
-          <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-lime-100 rounded-full flex items-center justify-center animate-pulse">
+        <div className="w-full max-w-md bg-white text-neutral-800 p-10 rounded-3xl shadow-2xl text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 bg-lime-100 rounded-full flex items-center justify-center">
                 <FaCheckCircle className="text-lime-500 text-4xl" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold mb-2">確認メールを送信しました</h1>
+          <h1 className="text-2xl font-bold">確認メールを送信しました</h1>
           <p className="text-neutral-600">
             <strong className="text-neutral-800">{email}</strong> 宛にメールを送信しました。メール内のリンクをクリックして、アカウント登録を完了してください。
           </p>
-           <p className="text-xs text-neutral-400 mt-4">
-            (メールが届かない場合は、迷惑メールフォルダもご確認ください)
+          <p className="text-xs text-neutral-400">
+            (メールは<strong className="font-semibold">Supabase</strong>から届きます。迷惑メールフォルダもご確認ください)
           </p>
+          
+          <div className="!mt-6 pt-4 border-t border-neutral-200">
+             <div className="flex items-start gap-2 text-left text-xs text-neutral-500 bg-neutral-50 p-3 rounded-lg">
+                <FaInfoCircle className="mt-0.5 flex-shrink-0" />
+                <p>
+                    もし、このメールアドレスで既にアカウントを有効化している場合、新しい確認メールは届きません。その場合は、お手数ですが<a href="/login" className="font-bold text-lime-600 underline">ログインページ</a>からログインしてください。
+                </p>
+             </div>
+          </div>
         </div>
       )}
     </div>

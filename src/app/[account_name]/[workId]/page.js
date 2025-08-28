@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { FaPlay, FaPause, FaShoppingCart, FaSpinner, FaExclamationCircle, FaCalendarAlt, FaUsers, FaDownload, FaCheckCircle, FaLock, FaArrowLeft } from "react-icons/fa";
+import { FaPlay, FaPause, FaShoppingCart, FaSpinner, FaExclamationCircle, FaCalendarAlt, FaUsers, FaDownload, FaCheckCircle, FaLock, FaArrowLeft, FaFlag } from "react-icons/fa";
+import { MdClose } from "react-icons/md";
 import { loadStripe } from '@stripe/stripe-js';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
@@ -56,6 +57,11 @@ export default function PublicWorkPage() {
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
   const audioRef = useRef(null);
+
+  // ★追加: 通報モーダルの状態管理
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportFeedback, setReportFeedback] = useState("");
   
   const PREVIEW_DURATION = 5;
 
@@ -171,6 +177,25 @@ export default function PublicWorkPage() {
     }
   };
 
+  // ★追加: 通報処理
+  const handleReport = () => {
+    if (!reportReason) {
+        alert("報告理由を選択してください。");
+        return;
+    }
+    const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/${account_name}/${workId}`;
+    const subject = `[shirokoe] 作品の報告 (ID: ${work.id})`;
+    const body = `問題のある作品について報告します。\n\n作品URL: ${workUrl}\n理由: ${reportReason}\n\n`;
+    // ★重要: YOUR_GMAIL@gmail.com の部分を、あなたのGmailアドレスに書き換えてください。
+    window.location.href = `mailto:YOUR_GMAIL@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setReportFeedback("ご報告ありがとうございます。");
+    setTimeout(() => {
+        setShowReportModal(false);
+        setReportFeedback("");
+        setReportReason("");
+    }, 2000);
+  };
+
   if (loading) {
     return <div className="min-h-screen bg-neutral-100 flex items-center justify-center"><FaSpinner className="animate-spin text-4xl text-lime-500" /></div>;
   }
@@ -194,6 +219,7 @@ export default function PublicWorkPage() {
   if (!work || !shop) return null;
   
   return (
+    <>
     <div className="min-h-screen bg-neutral-100 text-neutral-800 flex items-center justify-center p-4">
       <style jsx global>{`@keyframes wave { 0%, 100% { height: 0.5rem; } 50% { height: 2rem; } }`}</style>
       <div className="w-full max-w-md mx-auto">
@@ -230,19 +256,72 @@ export default function PublicWorkPage() {
                     <p className="text-xs text-neutral-400 mt-3">クリエイターの準備が完了するまでお待ちください。</p>
                 </div>
             )}
-            {/* ★追加: ショップトップに戻るボタン */}
             <div className="mt-4 text-center">
                 <button 
                     onClick={() => router.push(`/${shop.account_name}`)}
-                    className="text-sm text-neutral-500 hover:text-lime-600 font-semibold transition-colors flex items-center justify-center gap-2"
+                    className="text-sm text-neutral-500 hover:text-lime-600 font-semibold transition-colors flex items-center justify-center gap-2 mx-auto"
                 >
                     <FaArrowLeft />
                     <span>{shop.shop_name}のトップに戻る</span>
+                </button>
+            </div>
+            <div className="mt-6 pt-4 border-t border-neutral-200 text-center">
+                <button 
+                    onClick={() => setShowReportModal(true)}
+                    className="text-xs text-neutral-400 hover:text-red-600 font-semibold transition-colors flex items-center justify-center gap-1.5 mx-auto"
+                >
+                    <FaFlag />
+                    <span>この作品を報告する</span>
                 </button>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    {/* ★追加: 通報モーダル */}
+    {showReportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full text-left relative shadow-2xl">
+            <button
+              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition"
+              onClick={() => setShowReportModal(false)}
+            >
+              <MdClose size={24} />
+            </button>
+            <h3 className="text-2xl font-bold mb-6 text-neutral-900">作品を報告する</h3>
+            
+            {reportFeedback ? (
+                <p className="text-lime-600 font-semibold text-center">{reportFeedback}</p>
+            ) : (
+                <>
+                    <div className="space-y-3 mb-6">
+                        <p className="text-sm text-neutral-600">報告理由を選択してください:</p>
+                        {['過度に性的', '個人情報の漏洩等', '著作権違反', 'その他'].map(reason => (
+                            <label key={reason} className="flex items-center p-3 bg-neutral-100 rounded-lg cursor-pointer hover:bg-lime-100 transition-colors">
+                                <input 
+                                    type="radio" 
+                                    name="report_reason" 
+                                    value={reason} 
+                                    checked={reportReason === reason}
+                                    onChange={(e) => setReportReason(e.target.value)}
+                                    className="h-4 w-4 text-lime-600 border-neutral-300 focus:ring-lime-500"
+                                />
+                                <span className="ml-3 font-semibold text-neutral-800">{reason}</span>
+                            </label>
+                        ))}
+                    </div>
+                    <button
+                        onClick={handleReport}
+                        className="w-full py-3 bg-red-600 text-white rounded-xl font-bold transition-transform transform hover:scale-105"
+                    >
+                        報告する
+                    </button>
+                </>
+            )}
+          </div>
+        </div>
+    )}
+    </>
   );
 }
