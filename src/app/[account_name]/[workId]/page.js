@@ -62,6 +62,7 @@ export default function PublicWorkPage() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportFeedback, setReportFeedback] = useState("");
+  const [isReporting, setIsReporting] = useState(false);
   
   const PREVIEW_DURATION = 5;
 
@@ -178,22 +179,37 @@ export default function PublicWorkPage() {
   };
 
   // ★追加: 通報処理
-  const handleReport = () => {
+  const handleReport = async () => {
     if (!reportReason) {
         alert("報告理由を選択してください。");
         return;
     }
-    const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/${account_name}/${workId}`;
-    const subject = `[shirokoe] 作品の報告 (ID: ${work.id})`;
-    const body = `問題のある作品について報告します。\n\n作品URL: ${workUrl}\n理由: ${reportReason}\n\n`;
-    // ★重要: YOUR_GMAIL@gmail.com の部分を、あなたのGmailアドレスに書き換えてください。
-    window.location.href = `mailto:YOUR_GMAIL@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    setReportFeedback("ご報告ありがとうございます。");
-    setTimeout(() => {
-        setShowReportModal(false);
-        setReportFeedback("");
-        setReportReason("");
-    }, 2000);
+    setIsReporting(true);
+    try {
+        const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/${account_name}/${workId}`;
+        const { error } = await supabase.functions.invoke('send-report-email', {
+            body: {
+                workUrl,
+                reason: reportReason,
+                workTitle: work.title,
+                shopName: shop.shop_name
+            },
+        });
+        if (error) throw error;
+        
+        setReportFeedback("ご報告ありがとうございます。");
+        setTimeout(() => {
+            setShowReportModal(false);
+            setReportFeedback("");
+            setReportReason("");
+        }, 2000);
+
+    } catch (err) {
+        console.error("報告の送信に失敗しました:", err);
+        alert("報告の送信に失敗しました。");
+    } finally {
+        setIsReporting(false);
+    }
   };
 
   if (loading) {
@@ -279,7 +295,6 @@ export default function PublicWorkPage() {
       </div>
     </div>
 
-    {/* ★追加: 通報モーダル */}
     {showReportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full text-left relative shadow-2xl">
@@ -313,9 +328,10 @@ export default function PublicWorkPage() {
                     </div>
                     <button
                         onClick={handleReport}
-                        className="w-full py-3 bg-red-600 text-white rounded-xl font-bold transition-transform transform hover:scale-105"
+                        className="w-full py-3 bg-red-600 text-white rounded-xl font-bold transition-transform transform hover:scale-105 flex items-center justify-center gap-2"
+                        disabled={isReporting}
                     >
-                        報告する
+                        {isReporting ? <FaSpinner className="animate-spin" /> : '報告を送信'}
                     </button>
                 </>
             )}
