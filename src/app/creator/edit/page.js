@@ -135,6 +135,8 @@ export default function CreatorEditPage() {
   const [bannerUrl, setBannerUrl] = useState(null);
   const [bannerBlob, setBannerBlob] = useState(null);
   const [bannerPreviewUrl, setBannerPreviewUrl] = useState(null);
+  const [showDeleteUserModal, setShowDeleteUserModal] = useState(false);
+  
   
   const [isCropping, setIsCropping] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -274,6 +276,22 @@ export default function CreatorEditPage() {
     }
   };
 
+  const handleDeleteUser = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const { error } = await supabase.functions.invoke('delete-user', { method: 'POST' });
+      if (error) throw error;
+      await supabase.auth.signOut();
+      router.push("/");
+    } catch (err) {
+      setError("アカウントの削除に失敗しました。");
+      console.error(err);
+      setBusy(false);
+      setShowDeleteUserModal(false);
+    }
+  };
+
   if (loading) return <LoadingScreen />;
 
   if (isCropping && bannerPreviewUrl) {
@@ -291,8 +309,9 @@ export default function CreatorEditPage() {
     );
   }
 
-  return (
+ return (
     <>
+    <style>{`.prose ul { list-style-type: disc; margin-left: 1.5em; } .prose h4 { font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }`}</style>
     <div className="bg-neutral-100 min-h-screen px-6 py-12 text-neutral-900 font-sans">
       <div className="max-w-3xl mx-auto">
         <button onClick={() => router.push('/creator')} className="flex items-center gap-2 text-neutral-600 font-semibold mb-6 hover:text-lime-600 transition-colors"><FaArrowLeft /><span>マイページに戻る</span></button>
@@ -328,7 +347,7 @@ export default function CreatorEditPage() {
             </div>
             <div>
                 <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3"><FaUserEdit />ショップURL (変更不可)</label>
-                <a href={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe'}/${shop?.account_name}`} target="_blank" rel="noopener noreferrer" className="flex justify-between items-center px-4 py-3 bg-neutral-100 text-neutral-500 rounded-xl font-mono text-lg hover:bg-neutral-200 transition-colors">
+                <a href={`https://shirokoe/${shop?.account_name}`} target="_blank" rel="noopener noreferrer" className="flex justify-between items-center px-4 py-3 bg-neutral-100 text-neutral-500 rounded-xl font-mono text-lg hover:bg-neutral-200 transition-colors">
                     <span>{shop?.account_name}</span>
                     <FaExternalLinkAlt />
                 </a>
@@ -337,50 +356,34 @@ export default function CreatorEditPage() {
                 <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3"><MdAccountBalance />口座登録</label>
                 <div className="space-y-2">
                     {isStripeEnabled ? (
-                        <div className="w-full px-4 py-4 rounded-xl font-bold bg-lime-100 text-lime-800 flex items-center justify-center gap-2">
-                            <FaCheck />口座登録済み
+                         <div className="p-4 rounded-xl bg-lime-100 text-lime-800 space-y-2">
+                            <div className="font-bold flex items-center justify-center gap-2"><FaCheck />口座登録済み</div>
+                            <button onClick={() => setShowResetModal(true)} className="w-full text-xs hover:text-red-600 underline">登録情報を変更/リセットする</button>
                         </div>
                     ) : (
                         <button className={`w-full px-4 py-4 rounded-xl font-bold transition-transform transform hover:scale-105 ${shop?.stripe_account_id ? "bg-yellow-400 text-yellow-900" : "bg-neutral-800 text-white"} flex items-center justify-center gap-2`} onClick={handleStripeConnect} disabled={busy}>
                             {busy ? <FaSpinner className="animate-spin" /> : shop?.stripe_account_id ? <><FaExternalLinkAlt />登録手続きを続行/更新</> : <><FaExternalLinkAlt />Stripeで口座登録</>}
                         </button>
                     )}
-                    {shop?.stripe_account_id && (
-                        <button onClick={() => setShowResetModal(true)} className="w-full text-xs text-neutral-500 hover:text-red-600 underline">
-                            間違えましたか？登録をリセットする
-                        </button>
-                    )}
                 </div>
             </div>
             <div className="space-y-4">
                  <div>
-                    <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">
-                        <FaPercentage />
-                        手数料について
-                    </label>
+                    <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3"><FaPercentage />手数料について</label>
                     <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm space-y-2">
-                        <p>あなたの取り分は、**税抜販売価格の80%（1作品あたり約364円）**です。</p>
-                        <p className="text-xs text-neutral-400">Stripeの決済手数料は、私たちのプラットフォーム手数料から負担しますので、ご安心ください。</p>
+                         <p>あなたの取り分は、**税抜販売価格の80%**です。</p>
+                         <p className="text-xs text-neutral-400">Stripeの決済手数料は、私たちのプラットフォーム手数料から負担しますので、ご安心ください。</p>
                     </div>
                 </div>
                 <div>
-                    <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">
-                        売上の振込について
-                    </label>
+                    <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">売上の振込について</label>
                     <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm space-y-2">
                         <p>Stripeに登録された口座へ、**毎週月曜日に自動で売上が振り込まれます。**</p>
                         <p className="text-xs text-neutral-400">※ Stripeの規定により、最初の振込は支払いがあってから7〜14日後、それ以降は数営業日の遅延が発生します。</p>
-                        <a href="https://stripe.com/docs/payouts" target="_blank" rel="noopener noreferrer" className="text-lime-600 font-semibold underline flex items-center gap-1">
-                            Stripeの振込スケジュールについて詳しく <FaExternalLinkAlt size={12} />
-                        </a>
                     </div>
                 </div>
-                {/* ★更新: 利用規約セクション */}
                 <div>
-                    <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">
-                        <FaFileContract />
-                        利用規約
-                    </label>
+                    <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3"><FaFileContract />利用規約</label>
                     <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm space-y-2">
                         <p>サービスをご利用いただく前に、必ず利用規約をご確認ください。</p>
                         <button onClick={() => setShowTermsModal(true)} className="font-semibold text-lime-600 underline">
@@ -389,13 +392,25 @@ export default function CreatorEditPage() {
                     </div>
                 </div>
             </div>
+            {/* 退会処理セクション */}
+            <div className="!mt-12 pt-8 border-t-2 border-dashed border-red-200">
+                 <label className="flex items-center gap-2 text-lg font-semibold text-red-600 mb-3"><FaExclamationTriangle />アカウントの削除</label>
+                 <p className="text-sm text-neutral-600 mb-4">
+                    この操作は取り消せません。アカウントを削除すると、あなたのショップ、公開中のすべての作品、および関連するすべてのデータが完全に削除されます。
+                 </p>
+                 <button 
+                    onClick={() => setShowDeleteUserModal(true)}
+                    className="w-full sm:w-auto px-6 py-3 bg-red-600 text-white rounded-xl font-bold transition-transform transform hover:scale-105"
+                 >
+                    退会手続きに進む
+                 </button>
+            </div>
         </div>
       </div>
     </div>
-
-    {/* ★更新: 利用規約モーダル */}
+    
     {showTermsModal && <CreatorTermsModal onClose={() => setShowTermsModal(false)} />}
-
+    
     {showResetModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
@@ -417,6 +432,29 @@ export default function CreatorEditPage() {
           </div>
         </div>
     )}
+
+    {showDeleteUserModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
+            <FaExclamationTriangle className="text-5xl text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-2">本当に退会しますか？</h2>
+            <div className="text-neutral-600 mb-6 text-sm space-y-2">
+                <p>この操作は取り消せません。あなたのショップ、公開中のすべての作品、および関連するすべてのデータが完全に削除されます。</p>
+                <p className="font-bold bg-yellow-50 p-2 rounded-lg">
+                    未払いの売上がある場合、Stripeのスケジュールに従って後日自動で振り込まれますのでご安心ください。
+                </p>
+            </div>
+            <div className="flex gap-4">
+              <button onClick={() => setShowDeleteUserModal(false)} className="flex-1 py-3 bg-neutral-200 text-neutral-800 rounded-xl font-bold" disabled={busy}>キャンセル</button>
+              <button onClick={handleDeleteUser} className={`flex-1 py-3 bg-red-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 ${busy ? 'cursor-not-allowed' : ''}`} disabled={busy}>
+                {busy ? <FaSpinner className="animate-spin" /> : <FaTrash />}
+                <span>退会する</span>
+              </button>
+            </div>
+          </div>
+        </div>
+    )}
     </>
   );
 }
+
