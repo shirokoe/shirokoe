@@ -218,7 +218,7 @@ export default function PublicWorkPage() {
 
   const handleReport = () => {
     if (!reportReason) { alert("報告理由を選択してください。"); return; }
-    const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe'}/${account_name}/${workId}`;
+    const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe.com'}/${account_name}/${workId}`;
     const subject = `[shirokoe] 作品の報告 (ID: ${work.id})`;
     const body = `問題のある作品について報告します。\n\n作品URL: ${workUrl}\n理由: ${reportReason}\n\n`;
     window.location.href = `mailto:shirokoe.official@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
