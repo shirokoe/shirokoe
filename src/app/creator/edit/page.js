@@ -276,12 +276,13 @@ export default function CreatorEditPage() {
     }
   };
 
-  const handleDeleteUser = async () => {
+ const handleDeleteUser = async () => {
     setBusy(true);
     setError("");
     try {
-      const { error } = await supabase.functions.invoke('delete-user', { method: 'POST' });
-      if (error) throw error;
+      const { error: rpcError } = await supabase.rpc('delete_own_user_account');
+      if (rpcError) throw rpcError;
+      
       await supabase.auth.signOut();
       router.push("/");
     } catch (err) {
@@ -291,6 +292,7 @@ export default function CreatorEditPage() {
       setShowDeleteUserModal(false);
     }
   };
+
 
   if (loading) return <LoadingScreen />;
 
