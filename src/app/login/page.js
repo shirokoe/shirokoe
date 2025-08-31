@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { FaEnvelope, FaLock, FaSignInAlt, FaSpinner } from "react-icons/fa";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
