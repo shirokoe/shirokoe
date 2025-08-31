@@ -211,7 +211,7 @@ export default function CreatorPage() {
   };
 
   const handleCopyUrl = async () => {
-    const shopUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/${shop.account_name}`;
+    const shopUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe'}/${shop.account_name}`;
     await navigator.clipboard.writeText(shopUrl);
     setCopyFeedback("コピーしました！");
     setTimeout(() => setCopyFeedback(""), 2000);
@@ -315,9 +315,9 @@ export default function CreatorPage() {
     e.target.value = null;
   };
 
-  const onCropComplete = useCallback((_, croppedAreaPixels) => {
+  const onCropComplete = ((_, croppedAreaPixels) => {
     setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
+  });
 
   const handleCrop = async () => {
     if (imgSrc && croppedAreaPixels) {
@@ -339,42 +339,112 @@ export default function CreatorPage() {
   if (newAudioBlob) {
     return (
       <>
-        <div className="min-h-screen bg-neutral-100 p-6 flex flex-col items-center justify-center">
-          <div className="w-full max-w-2xl bg-white rounded-3xl p-8 shadow-md">
-            <h2 className="text-3xl font-black mb-6 text-center">新しい作品を公開</h2>
-            {error && <p className="bg-red-100 text-red-700 p-3 rounded-lg text-sm text-center font-semibold mb-6">{error}</p>}
-            <div className="mb-6">
-                <h3 className="text-lg font-bold mb-2">音声プレビュー (30秒)</h3>
-                <audio controls src={newAudioUrl} className="w-full rounded-lg" />
-            </div>
-            <div className="grid grid-cols-3 gap-6 mb-6">
-                <div className="col-span-1">
-                    <h3 className="text-lg font-bold mb-2">カバー画像</h3>
-                    <label className="cursor-pointer aspect-[8/7] bg-neutral-100 rounded-xl flex flex-col items-center justify-center text-neutral-500 border-2 border-dashed border-neutral-300 hover:border-lime-500 hover:text-lime-500 transition-colors">
-                    {croppedImageUrl ? (<img src={croppedImageUrl} alt="Cropped Cover" className="w-full h-full object-cover rounded-xl" />) : (<><FaImage className="text-4xl mb-2" /><span className="text-sm font-semibold text-center">画像を選択</span></>)}
-                    <input type="file" accept="image/*" onChange={onSelectFile} className="hidden" />
-                    </label>
-                </div>
-                <div className="col-span-2">
-                    <h3 className="text-lg font-bold mb-2">作品情報</h3>
-                    <div className="flex flex-col gap-4">
-                    <label className="flex flex-col">
-                        <span className="font-semibold text-neutral-600 mb-1">タイトル</span>
-                        <input type="text" value={workTitle} onChange={(e) => setWorkTitle(e.target.value)} placeholder="例：夏の日のささやき" className="w-full border-2 border-neutral-200 rounded-xl py-3 pl-4 focus:outline-none focus:border-lime-500 transition-colors" />
-                    </label>
-                    </div>
-                </div>
-            </div>
-            <div className="flex gap-4">
-                <button onClick={publishWork} className={`flex-1 px-6 py-4 rounded-xl font-bold text-white transition-transform transform hover:scale-105 flex items-center justify-center gap-2 ${publishing ? 'bg-lime-600 cursor-not-allowed' : 'bg-lime-500'}`} disabled={publishing}>
-                    {publishing ? (<><FaSpinner className="animate-spin" /><span>公開中...</span></>) : (<><FaUpload /><span>作品を公開</span></>)}
-                </button>
-                <button onClick={resetPublishForm} className="flex-1 px-6 py-4 bg-neutral-200 text-neutral-800 rounded-xl font-bold transition-transform transform hover:scale-105" disabled={publishing}>
-                    キャンセル
-                </button>
-            </div>
-          </div>
+       <div className="min-h-screen bg-neutral-100 p-6 flex flex-col items-center justify-center">
+  <div className="w-full max-w-2xl bg-white rounded-3xl p-8 shadow-md">
+    <h2 className="text-3xl font-black mb-6 text-center">新しい作品を公開</h2>
+
+    {error && (
+      <p className="bg-red-100 text-red-700 p-3 rounded-lg text-sm text-center font-semibold mb-6">
+        {error}
+      </p>
+    )}
+
+    {/* 音声プレビュー */}
+    <div className="mb-6">
+      <h3 className="text-lg font-bold mb-2">音声プレビュー (30秒)</h3>
+      <audio controls src={newAudioUrl} className="w-full rounded-lg" />
+    </div>
+
+    {/* 作品情報 + カバー */}
+    <div className="grid grid-cols-3 gap-6 mb-6">
+      <div className="col-span-1">
+        <h3 className="text-lg font-bold mb-2">カバー画像</h3>
+        <label className="cursor-pointer aspect-[8/7] bg-neutral-100 rounded-xl flex flex-col items-center justify-center text-neutral-500 border-2 border-dashed border-neutral-300 hover:border-lime-500 hover:text-lime-500 transition-colors">
+          {croppedImageUrl ? (
+            <img
+              src={croppedImageUrl}
+              alt="Cropped Cover"
+              className="w-full h-full object-cover rounded-xl"
+            />
+          ) : (
+            <>
+              <FaImage className="text-4xl mb-2" />
+              <span className="text-sm font-semibold text-center">
+                画像を選択
+              </span>
+            </>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={onSelectFile}
+            className="hidden"
+          />
+        </label>
+      </div>
+
+      <div className="col-span-2">
+        <h3 className="text-lg font-bold mb-2">作品情報</h3>
+        <div className="flex flex-col gap-4">
+          <label className="flex flex-col">
+            <span className="font-semibold text-neutral-600 mb-1">タイトル</span>
+            <input
+              type="text"
+              value={workTitle}
+              onChange={(e) => setWorkTitle(e.target.value)}
+              placeholder="例：夏の日のささやき"
+              className="w-full border-2 border-neutral-200 rounded-xl py-3 pl-4 focus:outline-none focus:border-lime-500 transition-colors"
+            />
+          </label>
         </div>
+      </div>
+    </div>
+
+    {/* 価格表示 */}
+    <div className="mb-6 bg-neutral-50 border border-neutral-200 rounded-xl p-4 text-center">
+      <p className="text-lg font-bold text-neutral-700">
+        価格：<span className="text-lime-600">500円（税込）</span>
+      </p>
+      <p className="text-sm text-neutral-500 mt-1">
+        ※ すべての購入者に一律価格が適用されます
+      </p>
+    </div>
+
+    {/* ボタン */}
+    <div className="flex gap-4">
+      <button
+        onClick={publishWork}
+        className={`flex-1 px-6 py-4 rounded-xl font-bold text-white transition-transform transform hover:scale-105 flex items-center justify-center gap-2 ${
+          publishing
+            ? "bg-lime-600 cursor-not-allowed"
+            : "bg-lime-500"
+        }`}
+        disabled={publishing}
+      >
+        {publishing ? (
+          <>
+            <FaSpinner className="animate-spin" />
+            <span>公開中...</span>
+          </>
+        ) : (
+          <>
+            <FaUpload />
+            <span>作品を公開</span>
+          </>
+        )}
+      </button>
+
+      <button
+        onClick={resetPublishForm}
+        className="flex-1 px-6 py-4 bg-neutral-200 text-neutral-800 rounded-xl font-bold transition-transform transform hover:scale-105"
+        disabled={publishing}
+      >
+        キャンセル
+      </button>
+    </div>
+  </div>
+</div>
+
         {isCropperOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-6 max-w-lg w-full flex flex-col" style={{ height: '90vh' }}>
@@ -416,7 +486,7 @@ export default function CreatorPage() {
                      <label className="font-semibold text-neutral-600 mb-2 block">ショップURLをシェア</label>
                      <div className="flex items-center gap-2">
                         <div className="flex-1 bg-neutral-100 text-neutral-600 px-4 py-3 rounded-lg text-sm font-mono truncate">
-                            {`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/${shop?.account_name}`}
+                            {`${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe'}/${shop?.account_name}`}
                         </div>
                         <button onClick={handleCopyUrl} className="px-5 py-3 bg-neutral-800 text-white rounded-lg font-bold transition-transform transform hover:scale-105 flex items-center gap-2">
                             <FaCopy />

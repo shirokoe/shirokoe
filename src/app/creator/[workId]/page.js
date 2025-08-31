@@ -101,7 +101,7 @@ export default function WorkDetailPage() {
   const handleCopyWorkUrl = async () => {
     const { data: shopData } = await supabase.from("shops").select("account_name").eq("id", work.user_id).single();
     if (shopData) {
-        const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/${shopData.account_name}/${work.id}`;
+        const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe'}/${shopData.account_name}/${work.id}`;
         await navigator.clipboard.writeText(workUrl);
         setCopyFeedback("作品URLをコピーしました！");
         setTimeout(() => setCopyFeedback(""), 2000);
@@ -159,7 +159,7 @@ export default function WorkDetailPage() {
                   <span className="font-bold text-lime-600">{work.sales_count}</span>
                 </div>
                  <div className="flex justify-between items-center bg-neutral-100 p-4 rounded-lg">
-                  <span className="font-semibold text-neutral-600">価格</span>
+                  <span className="font-semibold text-neutral-600">価格（税込）</span>
                   <span className="font-bold">¥{work.price}</span>
                 </div>
               </div>

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { FaSpinner, FaExclamationCircle, FaPlay, FaUserPlus, FaCalendarAlt, FaUsers } from "react-icons/fa";
+import { FaSpinner, FaExclamationCircle, FaPlay, FaUserPlus, FaCalendarAlt, FaUsers,FaYenSign  } from "react-icons/fa";
 import { MdClose, MdLogin } from "react-icons/md";
+import { RouterIcon } from "lucide-react";
 
 // =====================================================================
 // アカウント名直下の公開ショップページ
@@ -100,102 +101,143 @@ export default function AccountShopPage() {
 
   if (!shop) return null;
 
+  
   return (
-    <div className="bg-neutral-100 min-h-screen relative text-neutral-800">
-      {/* ヘッダーエリア */}
-      <header className="fixed top-0 left-0 right-0 z-50 p-4 flex justify-between items-center bg-white/80 backdrop-blur-sm shadow-sm">
-        <a href="/" className="font-black text-2xl text-lime-500">
-          shirokoe
-        </a>
-        <button
-          className="bg-neutral-800 text-white px-4 py-2 rounded-full font-semibold text-sm transition-transform transform hover:scale-105"
-          onClick={() => setShowCreatorModal(true)}
-        >
-          クリエイターになる
-        </button>
-      </header>
+  <div className="bg-gray-50 min-h-screen relative text-gray-800 font-sans">
+  {/* ヘッダー */}
+  <header className="fixed top-0 left-0 right-0 z-50 p-4 flex justify-between items-center bg-white/80 backdrop-blur-md shadow-sm">
+    <a href="/" className="font-black text-2xl text-lime-600 tracking-tighter">
+      shirokoe
+    </a>
+    <button
+      className="bg-gradient-to-r from-lime-500 to-green-500 text-white px-5 py-2 rounded-full font-bold text-sm shadow-md hover:scale-105 transition-transform"
+      onClick={() => setShowCreatorModal(true)}
+    >
+      クリエイターになる
+    </button>
+  </header>
 
-      <main className="max-w-5xl mx-auto pt-24 px-4 pb-10">
-        {/* ショップバナー */}
-        <div className="relative w-full h-48 md:h-64 rounded-3xl overflow-hidden shadow-lg mb-8">
-          {shop.banner_url ? (
-            <img src={shop.banner_url} alt={`${shop.shop_name}のバナー`} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-neutral-300"></div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end p-8">
-            <h1 className="text-4xl md:text-5xl font-black text-white">{shop.shop_name}</h1>
-          </div>
-        </div>
+  {/* メイン */}
+  <main className="max-w-6xl mx-auto pt-24 px-4 pb-20">
+    {/* ショップ紹介 */}
+    <section className="mb-16 text-center">
+      <div className="relative w-full h-48 md:h-64 rounded-3xl overflow-hidden shadow-lg bg-gray-200">
+        {shop.banner_url ? (
+          <img
+            src={shop.banner_url}
+            alt={`${shop.shop_name}のバナー`}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300"></div>
+        )}
+      </div>
+      <h1 className="text-4xl md:text-5xl font-black text-gray-900 mt-8">{shop.shop_name}</h1>
+      <p className="text-lg text-gray-500 mt-1">@{shop.account_name}</p>
+      <div className="mt-4 inline-block bg-lime-100 text-lime-800 text-sm font-bold px-4 py-1 rounded-full">
+        🎧 30秒ボイスショップ
+      </div>
+      <p className="mt-8 max-w-2xl mx-auto text-gray-600 leading-relaxed text-lg">
+        30秒に込められた <span className="font-semibold text-gray-900">“声の瞬間”</span> 。<br />
+        ここでしか出会えない響きを、あなたのコレクションに。
+      </p>
+    </section>
 
-        {/* ★追加: ショップコンセプトの説明 */}
-        <div className="text-center mb-12">
-            <p className="text-lg text-neutral-600">ここは30秒の録音作品だけを販売する、特別なショップです。</p>
-        </div>
+    {/* 作品ギャラリー */}
+    <section className="bg-white rounded-3xl p-6 sm:p-10 shadow-xl">
+      <h2 className="text-3xl font-bold mb-10 text-center text-gray-900">
+        作品ギャラリー
+      </h2>
+      {works.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-7">
+          {works.map((work) => (
+            <div
+              key={work.id}
+              className="bg-white rounded-2xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1.5 group cursor-pointer"
+              onClick={() => router.push(`/${shop.account_name}/${work.id}`)}
+            >
+              {/* カバー */}
+              <div className="relative w-full aspect-[8/7] overflow-hidden">
+                <img
+                  src={work.cover_url}
+                  alt={work.title}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <FaPlay className="text-white text-5xl drop-shadow-lg" />
+                </div>
+                <div className="absolute bottom-0 left-0 p-3 w-full">
+                  <h3 className="font-bold text-lg text-white truncate">{work.title}</h3>
+                </div>
+              </div>
 
-        {/* 作品一覧 */}
-        <div className="bg-white rounded-3xl p-8 shadow-md">
-          <h2 className="text-2xl font-bold mb-6">作品一覧</h2>
-          {works.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {works.map((work) => (
-                <div 
-                  key={work.id} 
-                  className="bg-neutral-50 rounded-2xl overflow-hidden shadow-sm transition-transform transform hover:scale-105 cursor-pointer group flex flex-col"
-                  onClick={() => router.push(`/${shop.account_name}/${work.id}`)}
-                >
-                  <div className="relative w-full aspect-[8/7]">
-                    <img src={work.cover_url} alt={work.title} className="absolute inset-0 w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                       <FaPlay className="text-white text-4xl" />
-                    </div>
+              {/* 詳細 */}
+              <div className="p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex items-center gap-1 text-lime-600 font-bold text-lg">
+                    <FaYenSign /> 
+                    <span>{work.price ? work.price.toLocaleString() : '---'}</span>
                   </div>
-                  <div className="p-4 flex flex-col flex-grow">
-                    <h3 className="font-bold text-lg truncate mb-2">{work.title}</h3>
-                    {/* ★追加: 公開日と販売数 */}
-                    <div className="text-xs text-neutral-500 space-y-1 mb-2">
-                        <p className="flex items-center gap-1.5"><FaCalendarAlt /> <span>{new Date(work.created_at).toLocaleDateString()}</span></p>
-                        <p className="flex items-center gap-1.5"><FaUsers /> <span>{work.sales_count}</span></p>
-                    </div>
-                    <p className="text-lg font-bold text-lime-600 mt-auto">¥{work.price}</p>
+                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                    <FaUsers /> <span>{work.sales_count || 0}</span>
                   </div>
                 </div>
-              ))}
+
+                {/* タグ */}
+                {work.tags && work.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {work.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded-full"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* 日付 */}
+                <div className="border-t border-gray-100 pt-2 flex items-center text-xs text-gray-400">
+                  <FaCalendarAlt className="mr-1.5" /> 
+                  <span>{new Date(work.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
             </div>
-          ) : (
-            <p className="text-neutral-500">このショップにはまだ作品がありません。</p>
-          )}
+          ))}
         </div>
+      ) : (
+        <div className="text-center py-20 px-6">
+          <p className="text-2xl font-bold text-gray-500">最初の声が、待っています。</p>
+          <p className="text-gray-500 mt-2">このクリエイターの最初の作品が公開されるのをお楽しみに。</p>
+        </div>
+      )}
+    </section>
+  </main>
 
-        {/* フッター */}
-        <footer className="mt-16 text-center text-neutral-500 text-sm">
-          <p>
-            ショップアクセス回数: <span className="font-bold text-neutral-600">{shop.access_count.toLocaleString()}</span>
-          </p>
-        </footer>
-      </main>
 
-      {/* クリエイターモーダル */}
+
       {showCreatorModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center relative shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center relative shadow-2xl animate-fade-in-up">
             <button
-              className="absolute top-5 right-5 text-neutral-400 hover:text-neutral-600 transition"
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
               onClick={() => setShowCreatorModal(false)}
             >
-              <MdClose size={24} />
+              <MdClose size={28} />
             </button>
-            <h3 className="text-2xl font-bold mb-6 text-neutral-900">クリエイターとして始める</h3>
+            <h3 className="text-2xl font-bold mb-6 text-gray-900">クリエイターとして始める</h3>
             <button
-              className="flex items-center justify-center gap-2 bg-neutral-800 text-white px-6 py-3 rounded-full mb-4 font-semibold w-full transition-transform transform hover:scale-105"
+              className="flex items-center justify-center gap-2.5 bg-gray-800 text-white px-6 py-3 rounded-full mb-4 font-semibold w-full transition-all transform hover:scale-105 hover:bg-gray-900"
               onClick={() => router.push("/login")}
             >
               <MdLogin />
               クリエイターログイン
             </button>
             <button
-              className="flex items-center justify-center gap-2 bg-lime-500 text-white px-6 py-3 rounded-full font-semibold w-full transition-transform transform hover:scale-105"
-              onClick={() => router.push("/createShop")}
+              className="flex items-center justify-center gap-2.5 bg-lime-500 text-white px-6 py-3 rounded-full font-semibold w-full transition-all transform hover:scale-105 hover:bg-lime-600"
+              onClick={() => router.push("/register")}
             >
               <FaUserPlus />
               無料でショップを作成
@@ -206,3 +248,4 @@ export default function AccountShopPage() {
     </div>
   );
 }
+

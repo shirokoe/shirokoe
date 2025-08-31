@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaInfoCircle, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaTrash, FaExclamationTriangle, FaPercentage } from "react-icons/fa";
-import { MdAccountBalance } from "react-icons/md";
+import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaInfoCircle, FaSpinner, FaImage, FaUpload, FaArrowLeft, FaMoneyBillWave, FaTrash, FaExclamationTriangle, FaPercentage, FaFileContract } from "react-icons/fa";
+import { MdAccountBalance, MdClose } from "react-icons/md";
 import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
 import { v4 as uuidv4 } from 'uuid';
@@ -57,6 +57,64 @@ function LoadingScreen() {
     );
 }
 
+// =====================================================================
+// ★更新: クリエイター利用規約モーダル
+// =====================================================================
+function CreatorTermsModal({ onClose }) {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+          <div className="bg-white rounded-2xl p-8 max-w-lg w-full text-left relative shadow-2xl animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition"
+              onClick={onClose}
+            >
+              <MdClose size={24} />
+            </button>
+            <h3 className="text-2xl font-bold mb-6 text-neutral-900">shirokoeクリエイター利用規約</h3>
+            <div className="prose prose-sm max-h-[60vh] overflow-y-auto pr-4 text-neutral-600">
+                <p>この利用規約（以下「本規約」といいます。）は、「shirokoe」（以下「本サービス」といいます。）において、音声作品（以下「作品」といいます。）を販売するクリエイター（以下「クリエイター」といいます。）の皆様に遵守していただく事項を定めます。</p>
+                
+                <h4>第1条（本サービスの利用）</h4>
+                <p>クリエイターは, 本規約に同意することにより, 本サービスを利用して作品を販売することができます。</p>
+                
+                <h4>第2条（禁止される作品）</h4>
+                <p>クリエイターは、自身が完全な権利を有するオリジナルの音声作品のみを出品するものとします。以下の内容を含む、またはその恐れのある作品の出品を固く禁じます。</p>
+                <ul>
+                    <li>第三者の著作権、プライバシー権、肖像権、その他の知的財産権を侵害する内容。</li>
+                    <li>過度に性的、または暴力的な表現を含む内容。</li>
+                    <li>特定の個人や団体に対する誹謗中傷、名誉毀損、または個人情報の漏洩に繋がる内容。</li>
+                    <li>法令または公序良俗に反する内容。</li>
+                    <li>その他、運営者が不適切と判断した内容。</li>
+                </ul>
+
+                <h4>第3条（売上と手数料）</h4>
+                <p>作品の販売価格は、一律500円（消費税込）とします。</p>
+                <p>クリエイターの収益は、税抜販売価格の80%とします。</p>
+                <p>当社のプラットフォーム手数料として、税抜販売価格の20%をいただきます。Stripeの決済手数料は、当社のプラットフォーム手数料の中から負担します。</p>
+
+                <h4>第4条（売上の振込）</h4>
+                <p>売上を受け取るには、Stripe Connectへの口座登録を完了させる必要があります。</p>
+                <p>売上は、Stripeの規定に基づき、毎週月曜日に登録された銀行口座へ自動で振り込まれます。振込スケジュールはStripeの規定に従います。</p>
+
+                <h4>第5条（作品の削除とペナルティ）</h4>
+                <p>クリエイターは、いつでも自身の作品を削除することができます。</p>
+                <p>運営者は、出品された作品が第2条に違反すると判断した場合、クリエイターへの事前の通知なく、当該作品を無断で削除できるものとします。この措置によるクリエイターの損害について、運営者は一切の責任を負いません。</p>
+
+                <h4>第6条（免責事項）</h4>
+                <p>クリエイターと購入者との間で生じたトラブルについて、当社は一切の責任を負いません。</p>
+                <p>本サービスの停止、中断、変更、終了によってクリエイターに生じた損害について、当社は一切の責任を負いません。</p>
+
+                <h4>第7条（本規約の変更）</h4>
+                <p>当社は、必要に応じて本規約を変更できるものとします。変更後の規約は、本サービス上に表示された時点から効力を生じるものとします。</p>
+                
+                <p className="text-right text-xs text-neutral-400 mt-4">制定日：2025年8月30日</p>
+            </div>
+            <button onClick={onClose} className="w-full mt-6 py-3 bg-neutral-800 text-white rounded-xl font-bold">閉じる</button>
+          </div>
+        </div>
+    );
+}
+
 
 // =====================================================================
 // プロフィール編集ページ本体
@@ -68,6 +126,7 @@ export default function CreatorEditPage() {
   const [loading, setLoading] = useState(true);
   const [isStripeEnabled, setIsStripeEnabled] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   
   const [shopName, setShopName] = useState("");
   const [editingShopName, setEditingShopName] = useState(false);
@@ -84,7 +143,6 @@ export default function CreatorEditPage() {
 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-
 
   const fetchProfile = useCallback(async () => {
       setLoading(true);
@@ -146,9 +204,9 @@ export default function CreatorEditPage() {
     setIsCropping(true);
   };
 
-  const onCropComplete = useCallback((_, areaPixels) => {
+  const onCropComplete = ((_, areaPixels) => {
     setCroppedAreaPixels(areaPixels);
-  }, []);
+  });
 
   const confirmCrop = async () => {
     if (!bannerPreviewUrl || !croppedAreaPixels) { setIsCropping(false); return; }
@@ -205,14 +263,12 @@ export default function CreatorEditPage() {
     setBusy(true);
     setError("");
     try {
-        const { error } = await supabase.functions.invoke('reset-stripe-account', { method: 'POST' });
+        const { data: resetData, error } = await supabase.functions.invoke('reset-stripe-account', { method: 'POST' });
         if (error) throw error;
-        
+        if(resetData.error){ throw new Error(resetData.error); }
         window.location.reload();
-
     } catch (err) {
-        setError("Stripeアカウントのリセットに失敗しました。");
-        console.error(err);
+        setError(err.message ?? "Stripeアカウントのリセットに失敗しました。");
         setBusy(false);
         setShowResetModal(false);
     }
@@ -272,7 +328,7 @@ export default function CreatorEditPage() {
             </div>
             <div>
                 <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3"><FaUserEdit />ショップURL (変更不可)</label>
-                <a href={`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/${shop?.account_name}`} target="_blank" rel="noopener noreferrer" className="flex justify-between items-center px-4 py-3 bg-neutral-100 text-neutral-500 rounded-xl font-mono text-lg hover:bg-neutral-200 transition-colors">
+                <a href={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe'}/${shop?.account_name}`} target="_blank" rel="noopener noreferrer" className="flex justify-between items-center px-4 py-3 bg-neutral-100 text-neutral-500 rounded-xl font-mono text-lg hover:bg-neutral-200 transition-colors">
                     <span>{shop?.account_name}</span>
                     <FaExternalLinkAlt />
                 </a>
@@ -297,17 +353,14 @@ export default function CreatorEditPage() {
                 </div>
             </div>
             <div className="space-y-4">
-                <div>
+                 <div>
                     <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">
                         <FaPercentage />
-                        手数料とあなたの取り分
+                        手数料について
                     </label>
-                    {/* ★修正: 手数料の説明を、よりシンプルで誠実な内容に更新 */}
-                    <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm space-y-1">
-                        <p>あなたの取り分は、**税抜販売価格の80%**（1作品あたり約364円）です。</p>
-                        <p className="text-xs text-neutral-400">
-                            Stripeの決済手数料は、私たちのプラットフォーム手数料から負担しますので、ご安心ください。
-                        </p>
+                    <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm space-y-2">
+                        <p>あなたの取り分は、**税抜販売価格の80%（1作品あたり約364円）**です。</p>
+                        <p className="text-xs text-neutral-400">Stripeの決済手数料は、私たちのプラットフォーム手数料から負担しますので、ご安心ください。</p>
                     </div>
                 </div>
                 <div>
@@ -322,10 +375,27 @@ export default function CreatorEditPage() {
                         </a>
                     </div>
                 </div>
+                {/* ★更新: 利用規約セクション */}
+                <div>
+                    <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3">
+                        <FaFileContract />
+                        利用規約
+                    </label>
+                    <div className="bg-neutral-50 rounded-xl p-4 text-neutral-600 text-sm space-y-2">
+                        <p>サービスをご利用いただく前に、必ず利用規約をご確認ください。</p>
+                        <button onClick={() => setShowTermsModal(true)} className="font-semibold text-lime-600 underline">
+                            クリエイター利用規約を開く
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
       </div>
     </div>
+
+    {/* ★更新: 利用規約モーダル */}
+    {showTermsModal && <CreatorTermsModal onClose={() => setShowTermsModal(false)} />}
+
     {showResetModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">

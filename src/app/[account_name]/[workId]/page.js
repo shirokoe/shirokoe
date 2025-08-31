@@ -36,6 +36,44 @@ function CustomPlayButton({ isPlaying, isLoading, onPlayClick }) {
   );
 }
 
+// =====================================================================
+// 利用規約モーダルコンポーネント
+// =====================================================================
+function TermsModal({ onClose }) {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+          <div className="bg-white rounded-2xl p-8 max-w-lg w-full text-left relative shadow-2xl animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition"
+              onClick={onClose}
+            >
+              <MdClose size={24} />
+            </button>
+            <h3 className="text-2xl font-bold mb-6 text-neutral-900">shirokoe購入者利用規約</h3>
+            <div className="prose prose-sm max-h-[60vh] overflow-y-auto pr-4 text-neutral-600">
+                <p>この利用規約（以下「本規約」といいます。）は、「shirokoe」（以下「本サービス」といいます。）において、音声作品（以下「作品」といいます。）を購入するお客様（以下「購入者」といいます。）に遵守していただく事項を定めます。</p>
+                <h4>第1条（本サービスの利用）</h4>
+                <p>購入者は、本規約に同意することにより、本サービスを利用して作品を購入することができます。</p>
+                <h4>第2条（作品の購入）</h4>
+                <p>作品の購入は、Stripeが提供する決済サービスを通じて行われます。作品はデジタルコンテンツの性質上、一度購入された後の<b>返品・返金は一切お受けできません。</b> 5秒間のプレビュー機能を参考に、十分にご確認の上、ご購入ください。</p>
+                <h4>第3条（作品の利用）</h4>
+                <p>購入者は、購入した作品を私的利用の範囲内でのみ楽しむことができます。購入した作品の複製、再配布、転売、公衆送信、その他クリエイターの権利を侵害する一切の行為を固く禁じます。</p>
+                <h4>第4条（作品のダウンロード）</h4>
+                <p>購入した作品は、購入後に表示されるダウンロード機能、またはブラウザのローカルストレージに保存された購入履歴を通じて、いつでも再ダウンロードすることが可能です。ただし、クリエイターが作品を削除した場合、または本サービスが終了した場合は、<b>再ダウンロードはできなくなります</b>ので、あらかじめご了承ください。</p>
+                <h4>第5条（禁止事項）</h4>
+                <p>購入者は、本サービスの利用にあたり、他の利用者、クリエイター、または当社の権利を侵害する行為、その他不正な行為を行ってはなりません。</p>
+                 <h4>第6条（免責事項）</h4>
+                <p>購入者とクリエイターとの間で生じたトラブルについて、当社は一切の責任を負いません。本サービスの停止、中断、変更、終了によって購入者に生じた損害について、当社は一切の責任を負いません。</p>
+                <h4>第7条（本規約の変更）</h4>
+                <p>当社は、必要に応じて本規約を変更できるものとします。変更後の規約は、本サービス上に表示された時点から効力を生じるものとします。</p>
+                <p className="text-xs text-neutral-400">制定日：2025年8月30日</p>
+            </div>
+            <button onClick={onClose} className="w-full mt-6 py-3 bg-neutral-800 text-white rounded-xl font-bold">閉じる</button>
+          </div>
+        </div>
+    );
+}
+
 
 // =====================================================================
 // 公開作品ページ本体
@@ -57,12 +95,12 @@ export default function PublicWorkPage() {
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
   const audioRef = useRef(null);
-
-  // ★追加: 通報モーダルの状態管理
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportFeedback, setReportFeedback] = useState("");
-  const [isReporting, setIsReporting] = useState(false);
+
+  // ★追加: 利用規約モーダルの状態管理
+  const [showTermsModal, setShowTermsModal] = useState(false);
   
   const PREVIEW_DURATION = 5;
 
@@ -178,38 +216,18 @@ export default function PublicWorkPage() {
     }
   };
 
-  // ★追加: 通報処理
-  const handleReport = async () => {
-    if (!reportReason) {
-        alert("報告理由を選択してください。");
-        return;
-    }
-    setIsReporting(true);
-    try {
-        const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/${account_name}/${workId}`;
-        const { error } = await supabase.functions.invoke('send-report-email', {
-            body: {
-                workUrl,
-                reason: reportReason,
-                workTitle: work.title,
-                shopName: shop.shop_name
-            },
-        });
-        if (error) throw error;
-        
-        setReportFeedback("ご報告ありがとうございます。");
-        setTimeout(() => {
-            setShowReportModal(false);
-            setReportFeedback("");
-            setReportReason("");
-        }, 2000);
-
-    } catch (err) {
-        console.error("報告の送信に失敗しました:", err);
-        alert("報告の送信に失敗しました。");
-    } finally {
-        setIsReporting(false);
-    }
+  const handleReport = () => {
+    if (!reportReason) { alert("報告理由を選択してください。"); return; }
+    const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe'}/${account_name}/${workId}`;
+    const subject = `[shirokoe] 作品の報告 (ID: ${work.id})`;
+    const body = `問題のある作品について報告します。\n\n作品URL: ${workUrl}\n理由: ${reportReason}\n\n`;
+    window.location.href = `mailto:shirokoe.official@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setReportFeedback("ご報告ありがとうございます。");
+    setTimeout(() => {
+        setShowReportModal(false);
+        setReportFeedback("");
+        setReportReason("");
+    }, 2000);
   };
 
   if (loading) {
@@ -222,12 +240,7 @@ export default function PublicWorkPage() {
         <FaExclamationCircle className="text-5xl text-red-500 mb-4" />
         <h1 className="text-2xl font-bold mb-2">エラーが発生しました</h1>
         <p className="text-neutral-500">{error}</p>
-        <button 
-            onClick={() => router.push('/')}
-            className="mt-8 px-6 py-3 bg-neutral-200 text-neutral-800 rounded-xl font-bold transition-transform transform hover:scale-105"
-        >
-            トップページに戻る
-        </button>
+        <button onClick={() => router.push('/')} className="mt-8 px-6 py-3 bg-neutral-200 text-neutral-800 rounded-xl font-bold transition-transform transform hover:scale-105">トップページに戻る</button>
       </div>
     );
   }
@@ -237,7 +250,7 @@ export default function PublicWorkPage() {
   return (
     <>
     <div className="min-h-screen bg-neutral-100 text-neutral-800 flex items-center justify-center p-4">
-      <style jsx global>{`@keyframes wave { 0%, 100% { height: 0.5rem; } 50% { height: 2rem; } }`}</style>
+      <style jsx global>{`@keyframes wave { 0%, 100% { height: 0.5rem; } 50% { height: 2rem; } } .prose { line-height: 1.6; } .prose h4 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: bold; }`}</style>
       <div className="w-full max-w-md mx-auto">
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           <div className="relative w-full aspect-[8/7] group">
@@ -245,47 +258,107 @@ export default function PublicWorkPage() {
             {!isPurchased && shop.stripe_charges_enabled && <CustomPlayButton isPlaying={isPlaying} isLoading={isAudioLoading} onPlayClick={handlePlayPause} />}
             <audio ref={audioRef} onPlay={() => { setIsPlaying(true); setIsAudioLoading(false); }} onPause={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)} onWaiting={() => setIsAudioLoading(true)} onCanPlay={() => setIsAudioLoading(false)} onTimeUpdate={() => { if (audioRef.current && audioRef.current.currentTime >= PREVIEW_DURATION) { audioRef.current.pause(); } }} className="hidden" />
           </div>
-          <div className="p-8">
-            <div className="text-center mb-6">
-              <h1 className="text-4xl font-black leading-tight">{work.title}</h1>
-              <p onClick={() => router.push(`/${shop.account_name}`)} className="text-lg text-neutral-500 mt-2 cursor-pointer hover:text-lime-600 transition-colors">by {shop.shop_name}</p>
-              {!isPurchased && shop.stripe_charges_enabled && <p className="text-xs text-neutral-400 mt-3">(カバー画像をタップして5秒間プレビューできます)</p>}
-            </div>
-            <div className="flex justify-center gap-6 text-neutral-500 mb-8">
-              <div className="flex items-center gap-2"><FaCalendarAlt /><span className="font-semibold">{new Date(work.created_at).toLocaleDateString()}</span></div>
-              <div className="flex items-center gap-2"><FaUsers /><span className="font-semibold">{work.sales_count} 人が購入済み</span></div>
-            </div>
-            {isPurchased ? (
-                <button onClick={handleDownload} className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 bg-neutral-800 text-white`} disabled={isAudioLoading}>
-                    {isAudioLoading ? <><FaSpinner className="animate-spin" /><span>準備中...</span></> : <><FaDownload /><span>再度ダウンロード</span></>}
-                </button>
-            ) : shop.stripe_charges_enabled ? (
-              <button onClick={handlePurchase} className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 ${isProcessingPurchase ? 'bg-lime-600 cursor-not-allowed' : 'bg-lime-500'}`} disabled={isProcessingPurchase}>
-                {isProcessingPurchase ? <><FaSpinner className="animate-spin" /><span>処理中...</span></> : <><FaShoppingCart /><span>¥{work.price} で購入する</span></>}
-              </button>
-            ) : (
-                <div className="text-center">
-                    <button className="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 bg-neutral-200 text-neutral-500 cursor-not-allowed" disabled>
-                        <FaLock />
-                        <span>現在購入できません</span>
-                    </button>
-                    <p className="text-xs text-neutral-400 mt-3">クリエイターの準備が完了するまでお待ちください。</p>
-                </div>
-            )}
+<div className="p-8">
+  <div className="text-center mb-6">
+    <h1 className="text-4xl font-black leading-tight">{work.title}</h1>
+    <div className="mt-3 flex justify-center">
+      <span className="px-3 py-1 text-xs font-bold bg-lime-100 text-lime-700 rounded-full shadow-sm">
+        🎧 30秒ボイス作品
+      </span>
+    </div>
+    <p
+      onClick={() => router.push(`/${shop.account_name}`)}
+      className="text-lg text-neutral-500 mt-3 cursor-pointer hover:text-lime-600 transition-colors"
+    >
+      by {shop.shop_name}
+    </p>
+    {!isPurchased && shop.stripe_charges_enabled && (
+      <p className="text-xs text-neutral-400 mt-2">
+        カバー画像をタップして <b className="text-lime-600">5秒間のプレビュー</b> を体験。<br />
+        購入後は <b className="text-lime-600">30秒フルボイス</b> を楽しめます。
+      </p>
+    )}
+  </div>
+
+  {/* 信頼感を出すメタ情報 */}
+  <div className="grid grid-cols-2 gap-4 mb-8">
+    <div className="bg-neutral-50 rounded-xl py-3 flex flex-col items-center shadow-sm">
+      <FaCalendarAlt className="text-lime-600 mb-1" />
+      <span className="text-sm text-neutral-500">公開日</span>
+      <span className="font-semibold">{new Date(work.created_at).toLocaleDateString()}</span>
+    </div>
+    <div className="bg-neutral-50 rounded-xl py-3 flex flex-col items-center shadow-sm">
+      <FaUsers className="text-lime-600 mb-1" />
+      <span className="text-sm text-neutral-500">購入者</span>
+      <span className="font-semibold">{work.sales_count} 人</span>
+    </div>
+  </div>
+
+  {/* 購入・ダウンロードボタン */}
+  {isPurchased ? (
+    <button
+      onClick={handleDownload}
+      className="w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 bg-neutral-800 text-white"
+      disabled={isAudioLoading}
+    >
+      {isAudioLoading ? (
+        <>
+          <FaSpinner className="animate-spin" />
+          <span>準備中...</span>
+        </>
+      ) : (
+        <>
+          <FaDownload />
+          <span>再度ダウンロード</span>
+        </>
+      )}
+    </button>
+  ) : shop.stripe_charges_enabled ? (
+    <button
+      onClick={handlePurchase}
+      className={`w-full py-4 rounded-xl font-bold text-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 text-white ${
+        isProcessingPurchase
+          ? "bg-lime-600 cursor-not-allowed"
+          : "bg-gradient-to-r from-lime-500 to-green-500 shadow-lg"
+      }`}
+      disabled={isProcessingPurchase}
+    >
+      {isProcessingPurchase ? (
+        <>
+          <FaSpinner className="animate-spin" />
+          <span>処理中...</span>
+        </>
+      ) : (
+        <>
+          <FaShoppingCart />
+          <span>¥{work.price} （税込）で購入する</span>
+        </>
+      )}
+    </button>
+  ) : (
+    <div className="text-center">
+      <button
+        className="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 bg-neutral-200 text-neutral-500 cursor-not-allowed"
+        disabled
+      >
+        <FaLock />
+        <span>現在購入できません</span>
+      </button>
+      <p className="text-xs text-neutral-400 mt-3">
+        クリエイターの準備が完了するまでお待ちください。
+      </p>
+    </div>
+  )}
+
             <div className="mt-4 text-center">
-                <button 
-                    onClick={() => router.push(`/${shop.account_name}`)}
-                    className="text-sm text-neutral-500 hover:text-lime-600 font-semibold transition-colors flex items-center justify-center gap-2 mx-auto"
-                >
+                <button onClick={() => router.push(`/${shop.account_name}`)} className="text-sm text-neutral-500 hover:text-lime-600 font-semibold transition-colors flex items-center justify-center gap-2 mx-auto">
                     <FaArrowLeft />
                     <span>{shop.shop_name}のトップに戻る</span>
                 </button>
             </div>
+
             <div className="mt-6 pt-4 border-t border-neutral-200 text-center">
-                <button 
-                    onClick={() => setShowReportModal(true)}
-                    className="text-xs text-neutral-400 hover:text-red-600 font-semibold transition-colors flex items-center justify-center gap-1.5 mx-auto"
-                >
+                <button onClick={() => setShowReportModal(true)} className="text-xs text-neutral-400 hover:text-red-600 font-semibold transition-colors flex items-center justify-center gap-1.5 mx-auto">
                     <FaFlag />
                     <span>この作品を報告する</span>
                 </button>
@@ -295,17 +368,14 @@ export default function PublicWorkPage() {
       </div>
     </div>
 
+    {/* ★追加: 利用規約モーダル */}
+    {showTermsModal && <TermsModal onClose={() => setShowTermsModal(false)} />}
+    
     {showReportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full text-left relative shadow-2xl">
-            <button
-              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition"
-              onClick={() => setShowReportModal(false)}
-            >
-              <MdClose size={24} />
-            </button>
+            <button className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition" onClick={() => setShowReportModal(false)}><MdClose size={24} /></button>
             <h3 className="text-2xl font-bold mb-6 text-neutral-900">作品を報告する</h3>
-            
             {reportFeedback ? (
                 <p className="text-lime-600 font-semibold text-center">{reportFeedback}</p>
             ) : (
@@ -314,25 +384,12 @@ export default function PublicWorkPage() {
                         <p className="text-sm text-neutral-600">報告理由を選択してください:</p>
                         {['過度に性的', '個人情報の漏洩等', '著作権違反', 'その他'].map(reason => (
                             <label key={reason} className="flex items-center p-3 bg-neutral-100 rounded-lg cursor-pointer hover:bg-lime-100 transition-colors">
-                                <input 
-                                    type="radio" 
-                                    name="report_reason" 
-                                    value={reason} 
-                                    checked={reportReason === reason}
-                                    onChange={(e) => setReportReason(e.target.value)}
-                                    className="h-4 w-4 text-lime-600 border-neutral-300 focus:ring-lime-500"
-                                />
+                                <input type="radio" name="report_reason" value={reason} checked={reportReason === reason} onChange={(e) => setReportReason(e.target.value)} className="h-4 w-4 text-lime-600 border-neutral-300 focus:ring-lime-500" />
                                 <span className="ml-3 font-semibold text-neutral-800">{reason}</span>
                             </label>
                         ))}
                     </div>
-                    <button
-                        onClick={handleReport}
-                        className="w-full py-3 bg-red-600 text-white rounded-xl font-bold transition-transform transform hover:scale-105 flex items-center justify-center gap-2"
-                        disabled={isReporting}
-                    >
-                        {isReporting ? <FaSpinner className="animate-spin" /> : '報告を送信'}
-                    </button>
+                    <button onClick={handleReport} className="w-full py-3 bg-red-600 text-white rounded-xl font-bold transition-transform transform hover:scale-105 flex items-center justify-center gap-2">報告を送信</button>
                 </>
             )}
           </div>
