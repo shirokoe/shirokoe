@@ -7,7 +7,7 @@ import { MdAccountBalance, MdClose } from "react-icons/md";
 import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
 import { v4 as uuidv4 } from 'uuid';
-import Image from "next/image";
+
 
 // =====================================================================
 // ヘルパー関数
@@ -326,29 +326,7 @@ export default function CreatorEditPage() {
                 <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3"><FaImage />バナー画像</label>
                 <label className="w-full h-40 border-2 border-dashed border-neutral-300 rounded-xl bg-neutral-50 overflow-hidden flex flex-col items-center justify-center cursor-pointer relative transition-colors hover:border-lime-500 group">
                     <input type="file" accept="image/*" className="hidden" onChange={onPickBanner} />
-{bannerPreviewUrl ? (
-  <div className="relative w-full h-full">
-    <Image
-      src={bannerPreviewUrl}
-      alt="banner preview"
-      fill
-      className="object-cover"
-    />
-  </div>
-) : bannerUrl ? (
-  <div className="relative w-full h-full">
-    <Image
-      src={bannerUrl}
-      alt="current banner"
-      fill
-      className="object-cover"
-    />
-  </div>
-) : (
-  <span className="text-neutral-500 text-sm font-semibold">
-    クリックして画像を選択
-  </span>
-)}
+                    {bannerPreviewUrl ? <img src={bannerPreviewUrl} alt="banner preview" className="h-full w-full object-cover" /> : bannerUrl ? <img src={bannerUrl} alt="current banner" className="h-full w-full object-cover" /> : <span className="text-neutral-500 text-sm font-semibold">クリックして画像を選択</span>}
                     <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"><div className="text-white font-bold flex items-center gap-2"><FaUpload /><span>画像を{bannerUrl || bannerPreviewUrl ? '変更' : '選択'}</span></div></div>
                 </label>
                 {bannerBlob && <div className="flex justify-end mt-4"><button type="button" onClick={handleSaveBanner} className="px-5 py-2 bg-lime-500 text-white rounded-full text-sm font-semibold shadow-md flex items-center gap-2 hover:bg-lime-600 transition-colors" disabled={busy}>{busy ? <FaSpinner className="animate-spin" /> : <><FaCheck />バナーを保存</>}</button></div>}

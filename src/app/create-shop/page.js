@@ -255,14 +255,7 @@ export default function CreateShopPage() {
             onClick={() => document.getElementById("bannerInput")?.click()}
           >
             {bannerPreviewUrl ? (
-        <div className="relative w-full h-full">
-  <Image
-    src={bannerPreviewUrl}
-    alt="banner preview"
-    fill
-    className="object-cover"
-  />
-</div>
+              <img src={bannerPreviewUrl} alt="banner preview" className="h-full w-full object-cover" />
             ) : (
               <span className="text-neutral-500 text-sm font-semibold">クリックして画像を選択</span>
             )}
