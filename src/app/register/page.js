@@ -123,9 +123,9 @@ export default function RegisterPage() {
         {step === "form" && (
           <div className="w-full max-w-md bg-white text-neutral-800 p-8 rounded-3xl shadow-2xl space-y-8">
             <div className="text-center">
-              <a href="/" className="font-black text-4xl text-lime-500">
+              <link href="/" className="font-black text-4xl text-lime-500">
                 shirokoe
-              </a>
+              </link>
               <h1 className="text-xl font-bold text-neutral-600 mt-2">アカウント登録</h1>
             </div>
 
@@ -193,9 +193,9 @@ export default function RegisterPage() {
             <div className="text-center text-sm text-neutral-500">
               <p>
                 すでにアカウントをお持ちですか？{" "}
-                <a href="/login" className="text-lime-600 underline font-semibold hover:text-lime-500">
+                <link href="/login" className="text-lime-600 underline font-semibold hover:text-lime-500">
                   ログイン
-                </a>
+                </link>
               </p>
             </div>
           </div>
@@ -220,7 +220,7 @@ export default function RegisterPage() {
                <div className="flex items-start gap-2 text-left text-xs text-neutral-500 bg-neutral-50 p-3 rounded-lg">
                   <FaInfoCircle className="mt-0.5 flex-shrink-0" />
                   <p>
-                      もし、このメールアドレスで既にアカウントを有効化している場合、新しい確認メールは届きません。その場合は、お手数ですが<a href="/login" className="font-bold text-lime-600 underline">ログインページ</a>からログインしてください。
+                      もし、このメールアドレスで既にアカウントを有効化している場合、新しい確認メールは届きません。その場合は、お手数ですが<link href="/login" className="font-bold text-lime-600 underline">ログインページ</link>からログインしてください。
                   </p>
                </div>
             </div>

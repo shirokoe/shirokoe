@@ -6,6 +6,7 @@ import { FaUserEdit, FaStore, FaPen, FaCheck, FaTimes, FaExternalLinkAlt, FaSpin
 import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
 import { v4 as uuidv4 } from 'uuid';
+import Image from "next/image";
 
 // =====================================================================
 // ヘルパー関数
@@ -361,11 +362,14 @@ export default function CreatorPage() {
         <h3 className="text-lg font-bold mb-2">カバー画像</h3>
         <label className="cursor-pointer aspect-[8/7] bg-neutral-100 rounded-xl flex flex-col items-center justify-center text-neutral-500 border-2 border-dashed border-neutral-300 hover:border-lime-500 hover:text-lime-500 transition-colors">
           {croppedImageUrl ? (
-            <img
-              src={croppedImageUrl}
-              alt="Cropped Cover"
-              className="w-full h-full object-cover rounded-xl"
-            />
+        <div className="relative w-full h-full rounded-xl overflow-hidden">
+  <Image
+    src={croppedImageUrl}
+    alt="Cropped Cover"
+    fill
+    className="object-cover"
+  />
+</div>
           ) : (
             <>
               <FaImage className="text-4xl mb-2" />
@@ -532,7 +536,14 @@ export default function CreatorPage() {
                      return (
                        <div key={work.id} className="bg-neutral-50 rounded-2xl overflow-hidden shadow-sm transition-transform transform hover:-translate-y-1 cursor-pointer group flex flex-col" onClick={() => router.push(`/creator/${work.id}`)}>
                          <div className="relative w-full aspect-[8/7]">
-                           <img src={coverUrl} alt={work.title} className="absolute inset-0 w-full h-full object-cover" />
+
+  <Image
+    src={coverUrl}
+    alt={work.title}
+    fill
+    className="object-cover"
+  />
+
                            <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 <FaPlay className="text-white text-4xl" />
                            </div>

@@ -106,9 +106,9 @@ export default function AccountShopPage() {
   <div className="bg-gray-50 min-h-screen relative text-gray-800 font-sans">
   {/* ヘッダー */}
   <header className="fixed top-0 left-0 right-0 z-50 p-4 flex justify-between items-center bg-white/80 backdrop-blur-md shadow-sm">
-    <a href="/" className="font-black text-2xl text-lime-600 tracking-tighter">
+    <link href="/" className="font-black text-2xl text-lime-600 tracking-tighter">
       shirokoe
-    </a>
+    </link>
     <button
       className="bg-gradient-to-r from-lime-500 to-green-500 text-white px-5 py-2 rounded-full font-bold text-sm shadow-md hover:scale-105 transition-transform"
       onClick={() => setShowCreatorModal(true)}
@@ -123,11 +123,15 @@ export default function AccountShopPage() {
     <section className="mb-16 text-center">
       <div className="relative w-full h-48 md:h-64 rounded-3xl overflow-hidden shadow-lg bg-gray-200">
         {shop.banner_url ? (
-          <img
-            src={shop.banner_url}
-            alt={`${shop.shop_name}のバナー`}
-            className="w-full h-full object-cover"
-          />
+ <div className="relative w-full h-full">
+  <Image
+    src={shop.banner_url}
+    alt={`${shop.shop_name}のバナー`}
+    fill
+    className="object-cover"
+    priority
+  />
+</div>
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300"></div>
         )}
@@ -158,11 +162,14 @@ export default function AccountShopPage() {
             >
               {/* カバー */}
               <div className="relative w-full aspect-[8/7] overflow-hidden">
-                <img
-                  src={work.cover_url}
-                  alt={work.title}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
+              <div className="relative w-full h-full overflow-hidden">
+  <Image
+    src={work.cover_url}
+    alt={work.title}
+    fill
+    className="object-cover transition-transform duration-500 group-hover:scale-110"
+  />
+</div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <FaPlay className="text-white text-5xl drop-shadow-lg" />

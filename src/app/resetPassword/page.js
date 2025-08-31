@@ -97,9 +97,9 @@ export default function ResetPasswordPage() {
 
         <div className="mt-4 text-center text-sm text-neutral-500 space-y-2">
           <p>
-            <a href="/login" className="text-lime-600 underline font-semibold hover:text-lime-500">
+            <link href="/login" className="text-lime-600 underline font-semibold hover:text-lime-500">
               ログインページに戻る
-            </a>
+            </link>
           </p>
         </div>
       </div>

@@ -254,7 +254,14 @@ export default function PublicWorkPage() {
       <div className="w-full max-w-md mx-auto">
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           <div className="relative w-full aspect-[8/7] group">
-            <img src={work.cover_url} alt={work.title} className="absolute inset-0 w-full h-full object-cover" />
+    
+  <Image
+    src={work.cover_url}
+    alt={work.title}
+    fill
+    className="object-cover"
+  />
+
             {!isPurchased && shop.stripe_charges_enabled && <CustomPlayButton isPlaying={isPlaying} isLoading={isAudioLoading} onPlayClick={handlePlayPause} />}
             <audio ref={audioRef} onPlay={() => { setIsPlaying(true); setIsAudioLoading(false); }} onPause={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)} onWaiting={() => setIsAudioLoading(true)} onCanPlay={() => setIsAudioLoading(false)} onTimeUpdate={() => { if (audioRef.current && audioRef.current.currentTime >= PREVIEW_DURATION) { audioRef.current.pause(); } }} className="hidden" />
           </div>

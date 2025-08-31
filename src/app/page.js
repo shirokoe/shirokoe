@@ -50,7 +50,7 @@ export default function Home() {
           <div className={`absolute inset-0 bg-neutral-800 rounded-full blur-xl opacity-0 transition-opacity duration-300 ${isHovered ? 'opacity-40' : ''}`} />
         </div>
         <p className="text-sm text-neutral-500 mb-24 animate-fadeInUp delay-300">
-            すでにアカウントをお持ちですか？ <a href="/login" className="text-lime-600 underline font-semibold hover:text-lime-500">ログイン</a>
+            すでにアカウントをお持ちですか？ <link href="/login" className="text-lime-600 underline font-semibold hover:text-lime-500">ログイン</link>
         </p>
         
         {/* 還元率セクション */}

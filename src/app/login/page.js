@@ -150,14 +150,14 @@ export default function LoginPage() {
         <div className="mt-4 text-center text-sm text-neutral-500 space-y-2">
           <p>
             ショップアカウントをお持ちでない方は{" "}
-            <a href="/register" className="text-lime-600 underline font-semibold hover:text-lime-500">
+            <link href="/register" className="text-lime-600 underline font-semibold hover:text-lime-500">
               新規登録
-            </a>
+            </link>
           </p>
           <p>
-            <a href="/resetPassword" className="text-neutral-600 underline hover:text-neutral-500">
+            <link href="/resetPassword" className="text-neutral-600 underline hover:text-neutral-500">
               パスワードをお忘れの方はこちら
-            </a>
+            </link>
           </p>
         </div>
       </div>
