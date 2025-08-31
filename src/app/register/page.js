@@ -194,9 +194,9 @@ export default function RegisterPage() {
             <div className="text-center text-sm text-neutral-500">
               <p>
                 すでにアカウントをお持ちですか？{" "}
-                <link href="/login" className="text-lime-600 underline font-semibold hover:text-lime-500">
+                <Link href="/login" className="text-lime-600 underline font-semibold hover:text-lime-500">
                   ログイン
-                </link>
+                </Link>
               </p>
             </div>
           </div>
