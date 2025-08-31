@@ -124,9 +124,9 @@ export default function RegisterPage() {
         {step === "form" && (
           <div className="w-full max-w-md bg-white text-neutral-800 p-8 rounded-3xl shadow-2xl space-y-8">
             <div className="text-center">
-              <link href="/" className="font-black text-4xl text-lime-500">
+              <Link href="/" className="font-black text-4xl text-lime-500">
                 shirokoe
-              </link>
+              </Link>
               <h1 className="text-xl font-bold text-neutral-600 mt-2">アカウント登録</h1>
             </div>
 
