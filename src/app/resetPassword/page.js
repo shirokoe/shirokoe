@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { FaEnvelope, FaSignInAlt, FaSpinner, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
+import Link from "next/link";
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState("");
@@ -97,9 +98,9 @@ export default function ResetPasswordPage() {
 
         <div className="mt-4 text-center text-sm text-neutral-500 space-y-2">
           <p>
-            <link href="/login" className="text-lime-600 underline font-semibold hover:text-lime-500">
+            <Link href="/login" className="text-lime-600 underline font-semibold hover:text-lime-500">
               ログインページに戻る
-            </link>
+            </Link>
           </p>
         </div>
       </div>
