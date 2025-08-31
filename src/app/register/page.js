@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { FaEnvelope, FaLock, FaUserPlus, FaCheckCircle, FaSpinner, FaInfoCircle } from "react-icons/fa";
 import { MdClose } from "react-icons/md";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 // =====================================================================
 // クリエイター利用規約モーダル
@@ -219,9 +220,18 @@ export default function RegisterPage() {
             <div className="!mt-6 pt-4 border-t border-neutral-200">
                <div className="flex items-start gap-2 text-left text-xs text-neutral-500 bg-neutral-50 p-3 rounded-lg">
                   <FaInfoCircle className="mt-0.5 flex-shrink-0" />
-                  <p>
-                      もし、このメールアドレスで既にアカウントを有効化している場合、新しい確認メールは届きません。その場合は、お手数ですが<link href="/login" className="font-bold text-lime-600 underline">ログインページ</link>からログインしてください。
-                  </p>
+           <p>
+  もし、このメールアドレスで既にアカウントを有効化している場合、
+  新しい確認メールは届きません。その場合は、お手数ですが
+  <Link
+    href="/login"
+    className="font-bold text-lime-600 underline"
+  >
+    ログインページ
+  </Link>
+  からログインしてください。
+</p>
+
                </div>
             </div>
           </div>
