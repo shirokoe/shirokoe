@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FaMicrophone, FaBolt, FaLeaf, FaArrowRight, FaWaveSquare } from "react-icons/fa";
+import Link from "next/link";
 
 export default function Home() {
   // const router = useRouter(); // Next.js固有のため削除
@@ -49,9 +50,16 @@ export default function Home() {
           </button>
           <div className={`absolute inset-0 bg-neutral-800 rounded-full blur-xl opacity-0 transition-opacity duration-300 ${isHovered ? 'opacity-40' : ''}`} />
         </div>
-        <p className="text-sm text-neutral-500 mb-24 animate-fadeInUp delay-300">
-            すでにアカウントをお持ちですか？ <link href="/login" className="text-lime-600 underline font-semibold hover:text-lime-500">ログイン</link>
-        </p>
+       
+<p className="text-sm text-neutral-500 mb-24 animate-fadeInUp delay-300">
+  すでにアカウントをお持ちですか？{" "}
+  <Link
+    href="/login"
+    className="text-lime-600 underline font-semibold hover:text-lime-500"
+  >
+    ログイン
+  </Link>
+</p>
         
         {/* 還元率セクション */}
         <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-2xl p-8 md:p-12 text-left transform hover:scale-105 transition-transform duration-300 animate-fadeInUp delay-400">
