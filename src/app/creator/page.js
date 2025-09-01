@@ -159,7 +159,7 @@ export default function CreatorPage() {
       if (!currentUser) { router.replace("/login"); return; }
       setUser(currentUser);
       const { data: shopData } = await supabase.from("shops").select("*").eq("id", currentUser.id).maybeSingle();
-      if (!shopData) { router.replace("/createShop"); return; }
+      if (!shopData) { router.replace("/create-shop"); return; }
       setShop(shopData);
       
       // ★追加: Stripeアカウントの有効状態を確認
@@ -211,7 +211,7 @@ export default function CreatorPage() {
   };
 
   const handleCopyUrl = async () => {
-    const shopUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe.com'}/${shop.account_name}`;
+    const shopUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe.jp'}/${shop.account_name}`;
     await navigator.clipboard.writeText(shopUrl);
     setCopyFeedback("コピーしました！");
     setTimeout(() => setCopyFeedback(""), 2000);
@@ -486,7 +486,7 @@ export default function CreatorPage() {
                      <label className="font-semibold text-neutral-600 mb-2 block">ショップURLをシェア</label>
                      <div className="flex items-center gap-2">
                         <div className="flex-1 bg-neutral-100 text-neutral-600 px-4 py-3 rounded-lg text-sm font-mono truncate">
-                            {`${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe.com'}/${shop?.account_name}`}
+                            {`${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe.jp'}/${shop?.account_name}`}
                         </div>
                         <button onClick={handleCopyUrl} className="px-5 py-3 bg-neutral-800 text-white rounded-lg font-bold transition-transform transform hover:scale-105 flex items-center gap-2">
                             <FaCopy />

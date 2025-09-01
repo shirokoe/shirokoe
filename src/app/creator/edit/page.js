@@ -348,7 +348,7 @@ export default function CreatorEditPage() {
             </div>
             <div>
                 <label className="flex items-center gap-2 text-lg font-semibold text-neutral-600 mb-3"><FaUserEdit />ショップURL (変更不可)</label>
-                <a href={`https://shirokoe/${shop?.account_name}`} target="_blank" rel="noopener noreferrer" className="flex justify-between items-center px-4 py-3 bg-neutral-100 text-neutral-500 rounded-xl font-mono text-lg hover:bg-neutral-200 transition-colors">
+                <a href={`https://shirokoe.jp/${shop?.account_name}`} target="_blank" rel="noopener noreferrer" className="flex justify-between items-center px-4 py-3 bg-neutral-100 text-neutral-500 rounded-xl font-mono text-lg hover:bg-neutral-200 transition-colors">
                     <span>{shop?.account_name}</span>
                     <FaExternalLinkAlt />
                 </a>

@@ -86,7 +86,7 @@ export default function WorkDetailPage() {
 
   const handleCopyWorkUrl = async () => {
     if (work && work.shops) {
-        const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/${work.shops.account_name}/${work.id}`;
+        const workUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://shirokoe.jp'}/${work.shops.account_name}/${work.id}`;
         await navigator.clipboard.writeText(workUrl);
         setCopyFeedback("作品URLをコピーしました！");
         setTimeout(() => setCopyFeedback(""), 2000);

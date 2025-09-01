@@ -122,7 +122,7 @@ export default function CreateShopPage() {
   }, [router]);
 
   const isValidAccountName = useMemo(
-    () => /^[a-zA-Z0-9_]{1,30}$/.test(accountName),
+    () => /^[a-zA-Z0-9_]{1,20}$/.test(accountName),
     [accountName]
   );
 
@@ -159,7 +159,7 @@ export default function CreateShopPage() {
     setError("");
 
     if (!user) { router.replace("/login"); return; }
-    if (!isValidAccountName) { setError("ユーザーネームは英数字と_のみ（最大30文字）です。"); return; }
+    if (!isValidAccountName) { setError("ユーザーネームは英数字と_のみ（最大20文字）です。"); return; }
     if (!shopName.trim()) { setError("ショップ名を入力してください。"); return; }
 
     setBusy(true);
@@ -276,7 +276,7 @@ export default function CreateShopPage() {
             ユーザーネーム (ショップURLになります)
           </label>
           <div className="flex items-center gap-2 border-2 border-neutral-200 rounded-xl px-4 py-3 bg-neutral-50 focus-within:border-lime-500 transition-colors">
-            <span className="font-bold select-none text-neutral-400">shirokoe.com/</span>
+            <span className="font-bold select-none text-neutral-400">shirokoe.jp/</span>
             <input
               value={accountName}
               onChange={(e) => setAccountName(e.target.value)}
