@@ -9,7 +9,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY"), {
+const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2024-04-10",
   httpClient: Stripe.createFetchHttpClient(),
 });
@@ -22,46 +22,37 @@ serve(async (req) => {
   try {
     const { workId } = await req.json();
     if (!workId) {
-      return new Response(JSON.stringify({ error: "作品IDがありません" }), { status: 400, headers: corsHeaders });
+      throw new Error("作品IDがありません");
     }
 
+    // Admin client to fetch work details securely
     const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL"),
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Get work and shop details to construct URLs and product name
     const { data: work, error: workError } = await supabaseAdmin
       .from("works")
       .select(`
         title,
         price,
         shops (
-          account_name,
-          stripe_account_id
+          account_name
         )
       `)
       .eq("id", workId)
       .single();
 
-    if (workError || !work) {
-      throw new Error("作品が見つかりません。");
+    if (workError || !work || !work.shops) {
+      throw new Error("作品またはショップ情報が見つかりません。");
     }
 
-    const creatorStripeAccountId = work.shops?.stripe_account_id;
-    if (!creatorStripeAccountId) {
-      throw new Error("クリエイターのStripeアカウントが設定されていません。");
-    }
-
-    const priceIncludingTax = work.price; // 500円
-    const priceExcludingTax = Math.round(priceIncludingTax / 1.1); // 税抜価格 (約455円)
-    const creatorShare = Math.round(priceExcludingTax * 0.80); // クリエイターの取り分 (約364円)
-    
-    // あなたの取り分 = 全体 - クリエイターの取り分
-    const totalApplicationFee = priceIncludingTax - creatorShare; // 500 - 364 = 136円
-
+    // Create a Stripe Checkout session
+    // This is now a standard payment, not a Connect transfer.
+    // The payment goes entirely to the platform's Stripe account.
     const session = await stripe.checkout.sessions.create({
-      // ★修正: この行を削除することで、Stripeダッシュボードの設定が自動で反映されます。
-      // payment_method_types: ["card"],
+      payment_method_types: ["card"],
       line_items: [
         {
           price_data: {
@@ -69,23 +60,18 @@ serve(async (req) => {
             product_data: {
               name: work.title,
             },
-            unit_amount: priceIncludingTax,
+            unit_amount: work.price,
           },
           quantity: 1,
         },
       ],
       mode: "payment",
-      success_url: `${Deno.env.get("SITE_URL")}/${work.shops.account_name}/${workId}?purchase_success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${Deno.env.get("SITE_URL")}/${work.shops.account_name}/${workId}`,
+      // Add metadata to know which work was purchased later for payouts
       metadata: {
         work_id: workId,
       },
-      payment_intent_data: {
-        application_fee_amount: totalApplicationFee,
-        transfer_data: {
-          destination: creatorStripeAccountId,
-        },
-      },
+      success_url: `${Deno.env.get("SITE_URL")}/${work.shops.account_name}/${workId}?purchase_success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${Deno.env.get("SITE_URL")}/${work.shops.account_name}/${workId}`,
     });
 
     return new Response(JSON.stringify({ sessionId: session.id }), {
@@ -94,6 +80,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Checkoutセッション作成エラー:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: error.message }), { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+    });
   }
 });

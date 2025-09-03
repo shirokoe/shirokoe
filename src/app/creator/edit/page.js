@@ -95,7 +95,7 @@ function CreatorTermsModal({ onClose }) {
 
                 <h4>第4条（売上の振込）</h4>
                 <p>売上を受け取るには、Stripe Connectへの口座登録を完了させる必要があります。</p>
-                <p>売上は、Stripeの規定に基づき、毎週月曜日に登録された銀行口座へ自動で振り込まれます。振込スケジュールはStripeの規定に従います。</p>
+                <p>当社は、あなたの売上を集計し、Stripeの規定に基づき、毎週月曜日に登録された銀行口座へ自動で振り込みます。振込スケジュールはStripeの規定に従います。</p>
 
                 <h4>第5条（作品の削除とペナルティ）</h4>
                 <p>クリエイターは、いつでも自身の作品を削除することができます。</p>
@@ -420,7 +420,7 @@ export default function CreatorEditPage() {
             <div className="text-neutral-600 mb-6 text-sm space-y-2">
                 <p>現在連携されているStripeアカウントの情報が削除され、最初から口座登録をやり直せるようになります。この操作は取り消せません。</p>
                 <p className="font-bold bg-yellow-50 p-2 rounded-lg">
-                    もし、リセット前のStripeアカウントに売上残高がある場合、その金額は以前登録された銀行口座へ、Stripeのスケジュールに従って後日自動で振り込まれますのでご安心ください。
+                    もし、リセット前のStripeアカウントに売上残高がある場合、その金額は以前登録された銀行口座へ、スケジュールに従って後日自動で振り込まれますのでご安心ください。
                 </p>
             </div>
             <div className="flex gap-4">

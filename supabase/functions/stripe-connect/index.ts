@@ -64,7 +64,7 @@ serve(async (req) => {
       return_url: `${Deno.env.get("SITE_URL")}/creator/edit`,
       type: "account_onboarding",
     });
-
+    
     return new Response(JSON.stringify({ url: accountLink.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -73,4 +73,4 @@ serve(async (req) => {
     console.error("Stripe Connectエラー:", error);
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
   }
-});
+});     
