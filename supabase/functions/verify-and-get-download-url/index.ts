@@ -31,7 +31,7 @@ serve(async (req) => {
         throw new Error("支払いが完了していません。");
     }
 
-    const workId = session.metadata?.work_id;
+    const workId = session.metadata?.work_ids;
     const chargeId = session.payment_intent;
 
     if (!workId || !chargeId) {
